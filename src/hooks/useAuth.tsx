@@ -149,6 +149,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('Not authenticated'), dealership: null };
     }
 
+    // Ensure profile exists first
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      // Create profile if it doesn't exist
+      const { error: createProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: user.id,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        });
+
+      if (createProfileError) {
+        console.error('Failed to create profile:', createProfileError);
+        return { error: new Error('Failed to create user profile'), dealership: null };
+      }
+    }
+
     const { data: dealership, error: dealershipError } = await supabase
       .from('dealerships')
       .insert({
@@ -159,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (dealershipError) {
+      console.error('Failed to create dealership:', dealershipError);
       return { error: dealershipError as unknown as Error, dealership: null };
     }
 
@@ -169,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', user.id);
 
     if (profileError) {
+      console.error('Failed to update profile:', profileError);
       return { error: profileError as unknown as Error, dealership: null };
     }
 
@@ -182,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     if (roleError) {
+      console.error('Failed to create role:', roleError);
       return { error: roleError as unknown as Error, dealership: null };
     }
 
