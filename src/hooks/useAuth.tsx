@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileData) {
       setProfile(profileData);
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('role, dealership_id')
           .eq('user_id', userId)
           .eq('dealership_id', profileData.dealership_id)
-          .single();
+          .maybeSingle();
 
         if (roleData) {
           setUserRole(roleData as UserRole);
