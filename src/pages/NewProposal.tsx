@@ -52,7 +52,14 @@ export default function NewProposal() {
   };
 
   const handleGenerate = async () => {
-    if (!profile?.dealership_id) return;
+    if (!user || !profile?.dealership_id) {
+      toast({
+        title: 'Unable to create proposal',
+        description: 'Please complete onboarding before creating proposals.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsGenerating(true);
 
