@@ -148,6 +148,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_dealership_for_current_user: {
+        Args: { _name: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "dealerships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       find_dealership_by_invite_code: {
         Args: { code: string }
         Returns: {
