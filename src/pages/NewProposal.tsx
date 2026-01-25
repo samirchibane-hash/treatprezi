@@ -1,36 +1,36 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, User, MapPin, Droplet, Sparkles, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { WaterBackground } from '@/components/WaterBackground';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, User, MapPin, Droplet, Sparkles, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WaterBackground } from "@/components/WaterBackground";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const SYSTEMS = [
-  { value: 'standard-softener', label: 'Standard Softener' },
-  { value: 'iron-filter', label: 'Iron Filter' },
-  { value: 'reverse-osmosis', label: 'Reverse Osmosis' },
-  { value: 'uv-purification', label: 'UV Purification' },
-  { value: 'whole-house', label: 'Whole House System' },
+  { value: "standard-softener", label: "Standard Softener" },
+  { value: "iron-filter", label: "Iron Filter" },
+  { value: "reverse-osmosis", label: "Reverse Osmosis" },
+  { value: "uv-purification", label: "UV Purification" },
+  { value: "whole-house", label: "Whole House System" },
 ];
 
 const STEPS = [
-  { id: 1, title: 'Customer Info', icon: User },
-  { id: 2, title: 'Location', icon: MapPin },
-  { id: 3, title: 'System', icon: Droplet },
+  { id: 1, title: "Customer Info", icon: User },
+  { id: 2, title: "Location", icon: MapPin },
+  { id: 3, title: "System", icon: Droplet },
 ];
 
 export default function NewProposal() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [customerName, setCustomerName] = useState('');
-  const [address, setAddress] = useState('');
-  const [recommendedSystem, setRecommendedSystem] = useState('');
+  const [customerName, setCustomerName] = useState("");
+  const [address, setAddress] = useState("");
+  const [recommendedSystem, setRecommendedSystem] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
@@ -54,9 +54,9 @@ export default function NewProposal() {
   const handleGenerate = async () => {
     if (!user || !profile?.dealership_id) {
       toast({
-        title: 'Unable to create proposal',
-        description: 'Please complete onboarding before creating proposals.',
-        variant: 'destructive',
+        title: "Unable to create proposal",
+        description: "Please complete onboarding before creating proposals.",
+        variant: "destructive",
       });
       return;
     }
@@ -66,7 +66,7 @@ export default function NewProposal() {
     try {
       // Create proposal in database first
       const { data: proposal, error: insertError } = await supabase
-        .from('proposals')
+        .from("proposals")
         .insert({
           customer_name: customerName,
           address: address,
@@ -80,37 +80,37 @@ export default function NewProposal() {
       if (insertError) throw insertError;
 
       // Call n8n webhook
-      const response = await fetch('https://treatengine.app.n8n.cloud/webhook-test/generate-water-proposal', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        "https://n8n.srv1297035.hstgr.cloud/webhook-test/e36c484d-ce4c-4f8e-bb75-9ad945c9ef7b",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            customerName,
+            address,
+            recommendedSystem: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
+            repName: profile.full_name,
+            proposalId: proposal.id,
+          }),
         },
-        body: JSON.stringify({
-          customerName,
-          address,
-          recommendedSystem: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
-          repName: profile.full_name,
-          proposalId: proposal.id,
-        }),
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
-        
+
         if (data.presentationUrl) {
-          await supabase
-            .from('proposals')
-            .update({ presentation_url: data.presentationUrl })
-            .eq('id', proposal.id);
+          await supabase.from("proposals").update({ presentation_url: data.presentationUrl }).eq("id", proposal.id);
         }
       }
 
       setIsComplete(true);
     } catch (error) {
-      console.error('Error generating proposal:', error);
+      console.error("Error generating proposal:", error);
       toast({
-        title: 'Proposal saved',
-        description: 'Your proposal has been saved. The presentation will be generated shortly.',
+        title: "Proposal saved",
+        description: "Your proposal has been saved. The presentation will be generated shortly.",
       });
       setIsComplete(true);
     } finally {
@@ -127,12 +127,8 @@ export default function NewProposal() {
             <div className="mb-8">
               <LoadingSpinner size="lg" />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              Creating Your Presentation
-            </h2>
-            <p className="text-muted-foreground">
-              Our AI is building your customized water treatment presentation...
-            </p>
+            <h2 className="text-xl font-bold text-foreground mb-2">Creating Your Presentation</h2>
+            <p className="text-muted-foreground">Our AI is building your customized water treatment presentation...</p>
             <div className="mt-8 flex justify-center gap-1">
               {[0, 1, 2].map((i) => (
                 <div
@@ -157,23 +153,22 @@ export default function NewProposal() {
             <div className="w-20 h-20 gradient-water rounded-full flex items-center justify-center mx-auto mb-6 shadow-water">
               <CheckCircle2 className="w-10 h-10 text-primary-foreground" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Proposal Created!
-            </h2>
-            <p className="text-muted-foreground mb-8">
-              Your presentation for {customerName} is ready.
-            </p>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Proposal Created!</h2>
+            <p className="text-muted-foreground mb-8">Your presentation for {customerName} is ready.</p>
             <div className="flex flex-col gap-3">
-              <Button variant="water" size="lg" onClick={() => navigate('/')}>
+              <Button variant="water" size="lg" onClick={() => navigate("/")}>
                 Back to Dashboard
               </Button>
-              <Button variant="ghost" onClick={() => {
-                setCurrentStep(1);
-                setCustomerName('');
-                setAddress('');
-                setRecommendedSystem('');
-                setIsComplete(false);
-              }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setCurrentStep(1);
+                  setCustomerName("");
+                  setAddress("");
+                  setRecommendedSystem("");
+                  setIsComplete(false);
+                }}
+              >
                 Create Another
               </Button>
             </div>
@@ -191,16 +186,14 @@ export default function NewProposal() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </button>
           <h1 className="text-3xl font-bold text-foreground">New Proposal</h1>
-          <p className="text-muted-foreground mt-1">
-            Create a customized water treatment presentation
-          </p>
+          <p className="text-muted-foreground mt-1">Create a customized water treatment presentation</p>
         </div>
 
         {/* Progress Steps */}
@@ -211,20 +204,18 @@ export default function NewProposal() {
                 <div className="flex flex-col items-center">
                   <div
                     className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                      currentStep >= step.id
-                        ? 'gradient-water shadow-water'
-                        : 'bg-muted'
+                      currentStep >= step.id ? "gradient-water shadow-water" : "bg-muted"
                     }`}
                   >
                     <step.icon
                       className={`w-5 h-5 ${
-                        currentStep >= step.id ? 'text-primary-foreground' : 'text-muted-foreground'
+                        currentStep >= step.id ? "text-primary-foreground" : "text-muted-foreground"
                       }`}
                     />
                   </div>
                   <span
                     className={`text-xs mt-2 font-medium ${
-                      currentStep >= step.id ? 'text-primary' : 'text-muted-foreground'
+                      currentStep >= step.id ? "text-primary" : "text-muted-foreground"
                     }`}
                   >
                     {step.title}
@@ -233,9 +224,9 @@ export default function NewProposal() {
                 {index < STEPS.length - 1 && (
                   <div
                     className={`w-full h-1 mx-2 rounded-full transition-all duration-300 ${
-                      currentStep > step.id ? 'gradient-water' : 'bg-muted'
+                      currentStep > step.id ? "gradient-water" : "bg-muted"
                     }`}
-                    style={{ width: '60px' }}
+                    style={{ width: "60px" }}
                   />
                 )}
               </div>
@@ -247,14 +238,14 @@ export default function NewProposal() {
         <Card className="shadow-water border-0 animate-fade-in">
           <CardHeader>
             <CardTitle>
-              {currentStep === 1 && 'Customer Information'}
-              {currentStep === 2 && 'Service Location'}
-              {currentStep === 3 && 'Recommended System'}
+              {currentStep === 1 && "Customer Information"}
+              {currentStep === 2 && "Service Location"}
+              {currentStep === 3 && "Recommended System"}
             </CardTitle>
             <CardDescription>
               {currentStep === 1 && "Enter the customer's name"}
-              {currentStep === 2 && 'Where will the system be installed?'}
-              {currentStep === 3 && 'Select the best system for this customer'}
+              {currentStep === 2 && "Where will the system be installed?"}
+              {currentStep === 3 && "Select the best system for this customer"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -312,30 +303,18 @@ export default function NewProposal() {
 
             {/* Navigation */}
             <div className="flex justify-between pt-6">
-              <Button
-                variant="ghost"
-                onClick={() => setCurrentStep(currentStep - 1)}
-                disabled={currentStep === 1}
-              >
+              <Button variant="ghost" onClick={() => setCurrentStep(currentStep - 1)} disabled={currentStep === 1}>
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </Button>
 
               {currentStep < 3 ? (
-                <Button
-                  variant="water"
-                  onClick={() => setCurrentStep(currentStep + 1)}
-                  disabled={!canProceed()}
-                >
+                <Button variant="water" onClick={() => setCurrentStep(currentStep + 1)} disabled={!canProceed()}>
                   Continue
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button
-                  variant="water"
-                  onClick={handleGenerate}
-                  disabled={!canProceed()}
-                >
+                <Button variant="water" onClick={handleGenerate} disabled={!canProceed()}>
                   <Sparkles className="w-4 h-4" />
                   Generate Presentation
                 </Button>
