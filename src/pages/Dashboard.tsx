@@ -33,7 +33,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
-    } else if (!authLoading && user && !profile?.dealership_id) {
+    } else if (!authLoading && user && profile && !profile.dealership_id) {
+      // Only redirect to onboarding if profile is loaded AND dealership_id is missing
       navigate('/onboarding');
     }
   }, [user, profile, authLoading, navigate]);
