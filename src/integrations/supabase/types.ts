@@ -16,25 +16,31 @@ export type Database = {
     Tables: {
       dealerships: {
         Row: {
+          address: string | null
           created_at: string
           created_by: string | null
           id: string
           invite_code: string
           name: string
+          phone: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           invite_code?: string
           name: string
+          phone?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           invite_code?: string
           name?: string
+          phone?: string | null
         }
         Relationships: []
       }
@@ -42,22 +48,28 @@ export type Database = {
         Row: {
           created_at: string
           dealership_id: string | null
+          email: string | null
           full_name: string
           id: string
+          phone: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           dealership_id?: string | null
+          email?: string | null
           full_name: string
           id?: string
+          phone?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           dealership_id?: string | null
+          email?: string | null
           full_name?: string
           id?: string
+          phone?: string | null
           user_id?: string
         }
         Relationships: [
@@ -151,11 +163,13 @@ export type Database = {
       create_dealership_for_current_user: {
         Args: { _name: string }
         Returns: {
+          address: string | null
           created_at: string
           created_by: string | null
           id: string
           invite_code: string
           name: string
+          phone: string | null
         }
         SetofOptions: {
           from: "*"
