@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Users, ArrowRight, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { WaterBackground } from '@/components/WaterBackground';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 type OnboardingStep = 'choice' | 'create' | 'join';
 
@@ -20,8 +21,26 @@ export default function Onboarding() {
   const [copied, setCopied] = useState(false);
 
   const navigate = useNavigate();
-  const { createDealership, joinDealership } = useAuth();
+  const { user, profile, loading: authLoading, createDealership, joinDealership } = useAuth();
   const { toast } = useToast();
+
+  // Redirect users who already have a dealership to the dashboard
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    } else if (!authLoading && profile?.dealership_id) {
+      navigate('/');
+    }
+  }, [user, profile, authLoading, navigate]);
+
+  // Show loading while checking auth state
+  if (authLoading || (!authLoading && profile?.dealership_id)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" message="Loading..." />
+      </div>
+    );
+  }
 
   const handleCreateDealership = async (e: React.FormEvent) => {
     e.preventDefault();
