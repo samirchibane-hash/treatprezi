@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, ExternalLink, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, FileText, ExternalLink, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { format } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface Proposal {
   id: string;
@@ -26,9 +38,11 @@ interface RepStats {
 export default function Dashboard() {
   const { user, profile, userRole, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [repStats, setRepStats] = useState<RepStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -98,6 +112,29 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleDeleteProposal = async (proposalId: string) => {
+    setDeletingId(proposalId);
+    const { error } = await supabase
+      .from('proposals')
+      .delete()
+      .eq('id', proposalId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete proposal. Please try again.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Deleted',
+        description: 'Proposal has been deleted.',
+      });
+      setProposals((prev) => prev.filter((p) => p.id !== proposalId));
+    }
+    setDeletingId(null);
   };
 
   if (authLoading || !profile?.dealership_id) {
@@ -290,18 +327,51 @@ export default function Dashboard() {
                         </span>
                       </div>
                     </div>
-                    {proposal.presentation_url ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(proposal.presentation_url!, '_blank')}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        View
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground italic">Generating...</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {proposal.presentation_url ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(proposal.presentation_url!, '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          View
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Generating...</span>
+                      )}
+                      {proposal.created_by === user?.id && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              disabled={deletingId === proposal.id}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Proposal?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete the proposal for {proposal.customer_name}. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteProposal(proposal.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
