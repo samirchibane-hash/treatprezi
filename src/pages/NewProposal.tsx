@@ -79,8 +79,8 @@ export default function NewProposal() {
 
       if (insertError) throw insertError;
 
-      // Call n8n webhook
-      const response = await fetch(
+      // Call n8n webhook (fire and forget - n8n will callback when PDF is ready)
+      fetch(
         "https://n8n.srv1297035.hstgr.cloud/webhook-test/e36c484d-ce4c-4f8e-bb75-9ad945c9ef7b",
         {
           method: "POST",
@@ -95,15 +95,7 @@ export default function NewProposal() {
             proposalId: proposal.id,
           }),
         },
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        if (data.presentationUrl) {
-          await supabase.from("proposals").update({ presentation_url: data.presentationUrl }).eq("id", proposal.id);
-        }
-      }
+      ).catch((err) => console.error("Failed to trigger n8n webhook:", err));
 
       setIsComplete(true);
     } catch (error) {
