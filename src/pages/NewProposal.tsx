@@ -81,7 +81,7 @@ export default function NewProposal() {
 
       // Call n8n webhook (fire and forget - n8n will callback when PDF is ready)
       fetch(
-        "https://n8n.srv1297035.hstgr.cloud/webhook-test/e36c484d-ce4c-4f8e-bb75-9ad945c9ef7b",
+        "https://n8n.srv1297035.hstgr.cloud/webhook/e36c484d-ce4c-4f8e-bb75-9ad945c9ef7b",
         {
           method: "POST",
           headers: {
