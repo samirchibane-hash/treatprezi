@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, ExternalLink, Users, TrendingUp, Droplet, LogOut, Settings } from 'lucide-react';
+import { Plus, FileText, ExternalLink, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -129,6 +129,9 @@ export default function Dashboard() {
             <span className="text-sm text-muted-foreground hidden sm:block">
               {profile.full_name}
             </span>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
+              <SettingsIcon className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleSignOut}>
               <LogOut className="w-4 h-4" />
             </Button>

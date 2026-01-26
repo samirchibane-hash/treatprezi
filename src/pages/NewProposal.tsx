@@ -64,6 +64,20 @@ export default function NewProposal() {
     setIsGenerating(true);
 
     try {
+      // Fetch full rep profile with phone/email
+      const { data: repProfile } = await supabase
+        .from("profiles")
+        .select("full_name, email, phone")
+        .eq("user_id", user.id)
+        .single();
+
+      // Fetch dealership details
+      const { data: dealership } = await supabase
+        .from("dealerships")
+        .select("name, address, phone")
+        .eq("id", profile.dealership_id)
+        .single();
+
       // Create proposal in database first
       const { data: proposal, error: insertError } = await supabase
         .from("proposals")
@@ -79,7 +93,7 @@ export default function NewProposal() {
 
       if (insertError) throw insertError;
 
-      // Call n8n webhook (fire and forget - n8n will callback when PDF is ready)
+      // Call n8n webhook with full rep and company data
       fetch(
         "https://n8n.srv1297035.hstgr.cloud/webhook/e36c484d-ce4c-4f8e-bb75-9ad945c9ef7b",
         {
@@ -91,8 +105,15 @@ export default function NewProposal() {
             customerName,
             address,
             recommendedSystem: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
-            repName: profile.full_name,
             proposalId: proposal.id,
+            // Rep details
+            repName: repProfile?.full_name || profile.full_name,
+            repEmail: repProfile?.email || user.email,
+            repPhone: repProfile?.phone || null,
+            // Company details
+            companyName: dealership?.name || null,
+            companyAddress: dealership?.address || null,
+            companyPhone: dealership?.phone || null,
           }),
         },
       ).catch((err) => console.error("Failed to trigger n8n webhook:", err));
