@@ -123,6 +123,41 @@ export type Database = {
           },
         ]
       }
+      stripe_accounts: {
+        Row: {
+          created_at: string
+          dealership_id: string
+          id: string
+          is_onboarded: boolean
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dealership_id: string
+          id?: string
+          is_onboarded?: boolean
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dealership_id?: string
+          id?: string
+          is_onboarded?: boolean
+          stripe_account_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_accounts_dealership_id_fkey"
+            columns: ["dealership_id"]
+            isOneToOne: false
+            referencedRelation: "dealerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
