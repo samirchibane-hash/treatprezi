@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, ExternalLink, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon, Trash2 } from 'lucide-react';
+import { Plus, FileText, ExternalLink, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon, Trash2, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
 
 interface Proposal {
   id: string;
@@ -43,6 +44,8 @@ export default function Dashboard() {
   const [repStats, setRepStats] = useState<RepStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -135,6 +138,11 @@ export default function Dashboard() {
       setProposals((prev) => prev.filter((p) => p.id !== proposalId));
     }
     setDeletingId(null);
+  };
+
+  const handleCreateInvoice = (proposal: Proposal) => {
+    setSelectedProposal(proposal);
+    setInvoiceDialogOpen(true);
   };
 
   if (authLoading || !profile?.dealership_id) {
@@ -340,6 +348,14 @@ export default function Dashboard() {
                       ) : (
                         <span className="text-xs text-muted-foreground italic">Generating...</span>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCreateInvoice(proposal)}
+                      >
+                        <Receipt className="w-4 h-4" />
+                        Invoice
+                      </Button>
                       {proposal.created_by === user?.id && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -379,6 +395,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </main>
+
+      <CreateInvoiceDialog
+        proposal={selectedProposal}
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+      />
     </div>
   );
 }
