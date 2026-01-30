@@ -18,6 +18,25 @@ export function StripeConnectCard() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
 
+  const getInvokeErrorMessage = async (err: unknown): Promise<string> => {
+    // supabase-js Functions errors often carry the underlying Response in `context`
+    const anyErr = err as any;
+
+    try {
+      const ctx = anyErr?.context;
+      if (ctx && typeof ctx === 'object' && typeof (ctx as Response).json === 'function') {
+        const body = await (ctx as Response).json().catch(() => null);
+        if (body?.error && typeof body.error === 'string') return body.error;
+        if (body?.message && typeof body.message === 'string') return body.message;
+      }
+    } catch {
+      // ignore
+    }
+
+    if (anyErr?.message && typeof anyErr.message === 'string') return anyErr.message;
+    return 'Failed to start Stripe connection. Please try again.';
+  };
+
   const checkStatus = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('stripe-connect-status');
@@ -53,9 +72,15 @@ export function StripeConnectCard() {
       }
     } catch (error) {
       console.error('Failed to connect Stripe:', error);
+
+      const message = await getInvokeErrorMessage(error);
+      const actionHint = message.toLowerCase().includes('temporarily restricted')
+        ? ' Stripe needs you to confirm this activity in your Stripe account, then retry.'
+        : '';
+
       toast({
         title: 'Error',
-        description: 'Failed to start Stripe connection. Please try again.',
+        description: `${message}${actionHint}`,
         variant: 'destructive',
       });
       setConnecting(false);
