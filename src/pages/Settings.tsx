@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { StripeConnectCard } from '@/components/settings/StripeConnectCard';
-
+import { ProductCatalogCard } from '@/components/settings/ProductCatalogCard';
 interface DealershipDetails {
   id: string;
   name: string;
@@ -442,7 +442,10 @@ export default function Settings() {
           {/* Payments Tab (Admin Only) */}
           {isAdmin && (
             <TabsContent value="payments">
-              <StripeConnectCard />
+              <div className="space-y-6">
+                <StripeConnectCard />
+                <ProductCatalogCard />
+              </div>
             </TabsContent>
           )}
         </Tabs>
