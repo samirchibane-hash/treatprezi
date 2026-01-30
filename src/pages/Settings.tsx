@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Building2, Users, Send } from 'lucide-react';
+import { ArrowLeft, User, Building2, Users, Send, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
+import { StripeConnectCard } from '@/components/settings/StripeConnectCard';
 
 interface DealershipDetails {
   id: string;
@@ -229,7 +230,7 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3' : 'grid-cols-1'}`}>
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-1'}`}>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -243,6 +244,10 @@ export default function Settings() {
                 <TabsTrigger value="team" className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   <span className="hidden sm:inline">Team</span>
+                </TabsTrigger>
+                <TabsTrigger value="payments" className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="hidden sm:inline">Payments</span>
                 </TabsTrigger>
               </>
             )}
@@ -431,6 +436,13 @@ export default function Settings() {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+          )}
+
+          {/* Payments Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="payments">
+              <StripeConnectCard />
             </TabsContent>
           )}
         </Tabs>
