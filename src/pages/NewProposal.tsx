@@ -31,7 +31,10 @@ export default function NewProposal() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const [recommendedSystem, setRecommendedSystem] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -45,7 +48,7 @@ export default function NewProposal() {
       case 1:
         return customerName.trim().length > 0;
       case 2:
-        return address.trim().length > 0;
+        return street.trim().length > 0 && city.trim().length > 0 && state.trim().length > 0 && zipCode.trim().length > 0;
       case 3:
         return recommendedSystem.length > 0;
       default:
@@ -90,7 +93,7 @@ export default function NewProposal() {
         .from("proposals")
         .insert({
           customer_name: customerName,
-          address: address,
+          address: `${street}, ${city}, ${state} ${zipCode}`,
           recommended_system: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
           dealership_id: profile.dealership_id!,
           created_by: user!.id,
@@ -112,7 +115,11 @@ export default function NewProposal() {
             customerName,
             customerEmail: customerEmail.trim() || null,
             customerPhone: customerPhone.trim() || null,
-            address,
+            street,
+            city,
+            state,
+            zipCode,
+            address: `${street}, ${city}, ${state} ${zipCode}`,
             recommendedSystem: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
             proposalId: proposal.id,
             // Rep details
@@ -188,7 +195,10 @@ export default function NewProposal() {
                   setCustomerName("");
                   setCustomerEmail("");
                   setCustomerPhone("");
-                  setAddress("");
+                  setStreet("");
+                  setCity("");
+                  setState("");
+                  setZipCode("");
                   setRecommendedSystem("");
                   setIsComplete(false);
                 }}
@@ -319,19 +329,64 @@ export default function NewProposal() {
             )}
 
             {currentStep === 2 && (
-              <div className="space-y-2">
-                <Label htmlFor="address" className="font-medium">
-                  Address
-                </Label>
-                <Input
-                  id="address"
-                  type="text"
-                  placeholder="e.g., 123 Main St, City, State"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="h-12 text-lg"
-                  autoFocus
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="street" className="font-medium">
+                    Street Address
+                  </Label>
+                  <Input
+                    id="street"
+                    type="text"
+                    placeholder="e.g., 123 Main St"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                    className="h-12 text-lg"
+                    autoFocus
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="font-medium">
+                      City
+                    </Label>
+                    <Input
+                      id="city"
+                      type="text"
+                      placeholder="e.g., Austin"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="h-12 text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state" className="font-medium">
+                      State
+                    </Label>
+                    <Input
+                      id="state"
+                      type="text"
+                      placeholder="e.g., TX"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      className="h-12 text-lg"
+                    />
+                  </div>
+                </div>
+                <div className="w-1/2">
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode" className="font-medium">
+                      ZIP Code
+                    </Label>
+                    <Input
+                      id="zipCode"
+                      type="text"
+                      placeholder="e.g., 78701"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                      className="h-12 text-lg"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
