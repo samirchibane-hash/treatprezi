@@ -1,29 +1,43 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, User, MapPin, Droplet, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, MapPin, Home, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { WaterBackground } from "@/components/WaterBackground";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const SYSTEMS = [
-  { value: "standard-softener", label: "Standard Softener" },
-  { value: "iron-filter", label: "Iron Filter" },
-  { value: "reverse-osmosis", label: "Reverse Osmosis" },
-  { value: "uv-purification", label: "UV Purification" },
-  { value: "whole-house", label: "Whole House System" },
+const HOME_AGE_OPTIONS = [
+  { value: "0-5", label: "0-5 years" },
+  { value: "6-10", label: "6-10 years" },
+  { value: "11-20", label: "11-20 years" },
+  { value: "21-30", label: "21-30 years" },
+  { value: "30+", label: "Over 30 years" },
+];
+
+const HOUSEHOLD_SIZE_OPTIONS = [
+  { value: "1-2", label: "1-2 people" },
+  { value: "3-4", label: "3-4 people" },
+  { value: "5-6", label: "5-6 people" },
+  { value: "7+", label: "7+ people" },
+];
+
+const WATER_SOURCE_OPTIONS = [
+  { value: "city", label: "City/Municipal Water" },
+  { value: "well", label: "Well Water" },
+  { value: "unknown", label: "Not Sure" },
 ];
 
 const STEPS = [
   { id: 1, title: "Customer Info", icon: User },
   { id: 2, title: "Location", icon: MapPin },
-  { id: 3, title: "System", icon: Droplet },
+  { id: 3, title: "Household", icon: Home },
 ];
 
 export default function NewProposal() {
@@ -35,7 +49,17 @@ export default function NewProposal() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [recommendedSystem, setRecommendedSystem] = useState("");
+  const [homeAge, setHomeAge] = useState("");
+  const [householdSize, setHouseholdSize] = useState("");
+  const [numShowers, setNumShowers] = useState("");
+  const [numBathrooms, setNumBathrooms] = useState("");
+  const [bottledWaterCases, setBottledWaterCases] = useState("");
+  const [waterSource, setWaterSource] = useState("");
+  const [hasDishwasher, setHasDishwasher] = useState(false);
+  const [hasDryer, setHasDryer] = useState(false);
+  const [hasWaterHeater, setHasWaterHeater] = useState(false);
+  const [hasIceMaker, setHasIceMaker] = useState(false);
+  const [waterConcerns, setWaterConcerns] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
@@ -50,7 +74,7 @@ export default function NewProposal() {
       case 2:
         return street.trim().length > 0 && city.trim().length > 0 && state.trim().length > 0 && zipCode.trim().length > 0;
       case 3:
-        return recommendedSystem.length > 0;
+        return homeAge.length > 0 && householdSize.length > 0 && waterSource.length > 0;
       default:
         return false;
     }
@@ -94,7 +118,7 @@ export default function NewProposal() {
         .insert({
           customer_name: customerName,
           address: `${street}, ${city}, ${state} ${zipCode}`,
-          recommended_system: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
+          recommended_system: `Home: ${HOME_AGE_OPTIONS.find(o => o.value === homeAge)?.label}, ${HOUSEHOLD_SIZE_OPTIONS.find(o => o.value === householdSize)?.label}, ${WATER_SOURCE_OPTIONS.find(o => o.value === waterSource)?.label}`,
           dealership_id: profile.dealership_id!,
           created_by: user!.id,
         })
@@ -120,7 +144,18 @@ export default function NewProposal() {
             state,
             zipCode,
             address: `${street}, ${city}, ${state} ${zipCode}`,
-            recommendedSystem: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
+            // Household details
+            homeAge: HOME_AGE_OPTIONS.find(o => o.value === homeAge)?.label || homeAge,
+            householdSize: HOUSEHOLD_SIZE_OPTIONS.find(o => o.value === householdSize)?.label || householdSize,
+            numShowers: numShowers || null,
+            numBathrooms: numBathrooms || null,
+            bottledWaterCases: bottledWaterCases || null,
+            waterSource: WATER_SOURCE_OPTIONS.find(o => o.value === waterSource)?.label || waterSource,
+            hasDishwasher,
+            hasDryer,
+            hasWaterHeater,
+            hasIceMaker,
+            waterConcerns: waterConcerns.trim() || null,
             proposalId: proposal.id,
             // Rep details
             repName: repProfile?.full_name || profile.full_name,
@@ -199,7 +234,17 @@ export default function NewProposal() {
                   setCity("");
                   setState("");
                   setZipCode("");
-                  setRecommendedSystem("");
+                  setHomeAge("");
+                  setHouseholdSize("");
+                  setNumShowers("");
+                  setNumBathrooms("");
+                  setBottledWaterCases("");
+                  setWaterSource("");
+                  setHasDishwasher(false);
+                  setHasDryer(false);
+                  setHasWaterHeater(false);
+                  setHasIceMaker(false);
+                  setWaterConcerns("");
                   setIsComplete(false);
                 }}
               >
@@ -274,12 +319,12 @@ export default function NewProposal() {
             <CardTitle>
               {currentStep === 1 && "Customer Information"}
               {currentStep === 2 && "Service Location"}
-              {currentStep === 3 && "Recommended System"}
+              {currentStep === 3 && "Household Details"}
             </CardTitle>
             <CardDescription>
-              {currentStep === 1 && "Enter the customer's name"}
+              {currentStep === 1 && "Enter the customer's contact information"}
               {currentStep === 2 && "Where will the system be installed?"}
-              {currentStep === 3 && "Select the best system for this customer"}
+              {currentStep === 3 && "Tell us about the home and water usage"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -391,20 +436,155 @@ export default function NewProposal() {
             )}
 
             {currentStep === 3 && (
-              <div className="space-y-2">
-                <Label className="font-medium">Recommended System</Label>
-                <Select value={recommendedSystem} onValueChange={setRecommendedSystem}>
-                  <SelectTrigger className="h-12 text-lg">
-                    <SelectValue placeholder="Select a system..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SYSTEMS.map((system) => (
-                      <SelectItem key={system.value} value={system.value}>
-                        {system.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-6">
+                {/* Home Age & Household Size */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-medium">Home Age</Label>
+                    <Select value={homeAge} onValueChange={setHomeAge}>
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOME_AGE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-medium">Household Size</Label>
+                    <Select value={householdSize} onValueChange={setHouseholdSize}>
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOUSEHOLD_SIZE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Showers & Bathrooms */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numShowers" className="font-medium">
+                      Number of Showers
+                    </Label>
+                    <Input
+                      id="numShowers"
+                      type="number"
+                      min="0"
+                      placeholder="e.g., 2"
+                      value={numShowers}
+                      onChange={(e) => setNumShowers(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="numBathrooms" className="font-medium">
+                      Number of Bathrooms
+                    </Label>
+                    <Input
+                      id="numBathrooms"
+                      type="number"
+                      min="0"
+                      placeholder="e.g., 2"
+                      value={numBathrooms}
+                      onChange={(e) => setNumBathrooms(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* Water Source & Bottled Water */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-medium">Water Source</Label>
+                    <Select value={waterSource} onValueChange={setWaterSource}>
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {WATER_SOURCE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bottledWater" className="font-medium">
+                      Bottled Water/Month
+                    </Label>
+                    <Input
+                      id="bottledWater"
+                      type="number"
+                      min="0"
+                      placeholder="Cases per month"
+                      value={bottledWaterCases}
+                      onChange={(e) => setBottledWaterCases(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* Appliances */}
+                <div className="space-y-3">
+                  <Label className="font-medium">Appliances in Home</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
+                      <Checkbox
+                        checked={hasDishwasher}
+                        onCheckedChange={(checked) => setHasDishwasher(checked === true)}
+                      />
+                      <span>Dishwasher</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
+                      <Checkbox
+                        checked={hasDryer}
+                        onCheckedChange={(checked) => setHasDryer(checked === true)}
+                      />
+                      <span>Dryer</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
+                      <Checkbox
+                        checked={hasWaterHeater}
+                        onCheckedChange={(checked) => setHasWaterHeater(checked === true)}
+                      />
+                      <span>Water Heater</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors">
+                      <Checkbox
+                        checked={hasIceMaker}
+                        onCheckedChange={(checked) => setHasIceMaker(checked === true)}
+                      />
+                      <span>Ice Maker</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Water Concerns */}
+                <div className="space-y-2">
+                  <Label htmlFor="waterConcerns" className="font-medium">
+                    Water Concerns <span className="text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="waterConcerns"
+                    type="text"
+                    placeholder="e.g., hard water, bad taste, staining..."
+                    value={waterConcerns}
+                    onChange={(e) => setWaterConcerns(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
               </div>
             )}
 
