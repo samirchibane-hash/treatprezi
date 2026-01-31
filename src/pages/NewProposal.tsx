@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, User, MapPin, Home, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, MapPin, Home, Droplets, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ const STEPS = [
   { id: 1, title: "Customer Info", icon: User },
   { id: 2, title: "Location", icon: MapPin },
   { id: 3, title: "Household", icon: Home },
+  { id: 4, title: "Water Test", icon: Droplets },
 ];
 
 export default function NewProposal() {
@@ -60,6 +62,12 @@ export default function NewProposal() {
   const [hasWaterHeater, setHasWaterHeater] = useState(false);
   const [hasIceMaker, setHasIceMaker] = useState(false);
   const [waterConcerns, setWaterConcerns] = useState("");
+  // Water Test fields
+  const [hardness, setHardness] = useState("");
+  const [iron, setIron] = useState("");
+  const [tds, setTds] = useState("");
+  const [ph, setPh] = useState<number[]>([7]);
+  const [chlorine, setChlorine] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
@@ -75,6 +83,8 @@ export default function NewProposal() {
         return street.trim().length > 0 && city.trim().length > 0 && state.trim().length > 0 && zipCode.trim().length > 0;
       case 3:
         return homeAge.length > 0 && householdSize.length > 0 && waterSource.length > 0;
+      case 4:
+        return true; // All water test fields are optional
       default:
         return false;
     }
@@ -156,6 +166,12 @@ export default function NewProposal() {
             hasWaterHeater,
             hasIceMaker,
             waterConcerns: waterConcerns.trim() || null,
+            // Water test results
+            hardness: hardness ? parseFloat(hardness) : null,
+            iron: iron ? parseFloat(iron) : null,
+            tds: tds ? parseFloat(tds) : null,
+            ph: ph[0],
+            chlorine: chlorine ? parseFloat(chlorine) : null,
             proposalId: proposal.id,
             // Rep details
             repName: repProfile?.full_name || profile.full_name,
@@ -245,6 +261,11 @@ export default function NewProposal() {
                   setHasWaterHeater(false);
                   setHasIceMaker(false);
                   setWaterConcerns("");
+                  setHardness("");
+                  setIron("");
+                  setTds("");
+                  setPh([7]);
+                  setChlorine("");
                   setIsComplete(false);
                 }}
               >
@@ -320,11 +341,13 @@ export default function NewProposal() {
               {currentStep === 1 && "Customer Information"}
               {currentStep === 2 && "Service Location"}
               {currentStep === 3 && "Household Details"}
+              {currentStep === 4 && "Water Test Results"}
             </CardTitle>
             <CardDescription>
               {currentStep === 1 && "Enter the customer's contact information"}
               {currentStep === 2 && "Where will the system be installed?"}
               {currentStep === 3 && "Tell us about the home and water usage"}
+              {currentStep === 4 && "Enter the water quality test measurements"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -588,6 +611,98 @@ export default function NewProposal() {
               </div>
             )}
 
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                {/* Hardness & Iron */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="hardness" className="font-medium">
+                      Hardness <span className="text-muted-foreground font-normal">(Grains)</span>
+                    </Label>
+                    <Input
+                      id="hardness"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="e.g., 15"
+                      value={hardness}
+                      onChange={(e) => setHardness(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="iron" className="font-medium">
+                      Iron <span className="text-muted-foreground font-normal">(ppm)</span>
+                    </Label>
+                    <Input
+                      id="iron"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g., 0.3"
+                      value={iron}
+                      onChange={(e) => setIron(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* TDS & Chlorine */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tds" className="font-medium">
+                      TDS <span className="text-muted-foreground font-normal">(ppm)</span>
+                    </Label>
+                    <Input
+                      id="tds"
+                      type="number"
+                      min="0"
+                      placeholder="e.g., 350"
+                      value={tds}
+                      onChange={(e) => setTds(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="chlorine" className="font-medium">
+                      Chlorine <span className="text-muted-foreground font-normal">(ppm)</span>
+                    </Label>
+                    <Input
+                      id="chlorine"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="e.g., 1.5"
+                      value={chlorine}
+                      onChange={(e) => setChlorine(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                {/* pH Slider */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label className="font-medium">pH Level</Label>
+                    <span className="text-lg font-semibold text-primary">{ph[0].toFixed(1)}</span>
+                  </div>
+                  <Slider
+                    value={ph}
+                    onValueChange={setPh}
+                    min={0}
+                    max={14}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0 (Acidic)</span>
+                    <span>7 (Neutral)</span>
+                    <span>14 (Alkaline)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Navigation */}
             <div className="flex justify-between pt-6">
               <Button variant="ghost" onClick={() => setCurrentStep(currentStep - 1)} disabled={currentStep === 1}>
@@ -595,7 +710,7 @@ export default function NewProposal() {
                 Back
               </Button>
 
-              {currentStep < 3 ? (
+              {currentStep < 4 ? (
                 <Button variant="water" onClick={() => setCurrentStep(currentStep + 1)} disabled={!canProceed()}>
                   Continue
                   <ArrowRight className="w-4 h-4" />
