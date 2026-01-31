@@ -44,8 +44,8 @@ serve(async (req) => {
     logStep('Dealership found', { dealershipId });
 
     // Get request body
-    const { proposalId, productIds, customerEmail } = await req.json();
-    logStep('Request params', { proposalId, productIds, customerEmail });
+    const { proposalId, productIds, customerEmail, allowPromoCodes } = await req.json();
+    logStep('Request params', { proposalId, productIds, customerEmail, allowPromoCodes });
 
     if (!proposalId || !productIds?.length || !customerEmail) {
       throw new Error('Missing required fields: proposalId, productIds, customerEmail');
@@ -114,6 +114,7 @@ serve(async (req) => {
     // Create a payment link using the connected account
     const paymentLink = await stripe.paymentLinks.create({
       line_items: lineItems,
+      allow_promotion_codes: allowPromoCodes !== false,
       metadata: {
         proposal_id: proposalId,
         customer_name: proposal.customer_name,
@@ -122,7 +123,7 @@ serve(async (req) => {
     }, {
       stripeAccount: stripeAccount.stripe_account_id,
     });
-    logStep('Payment link created', { url: paymentLink.url });
+    logStep('Payment link created', { url: paymentLink.url, allowPromoCodes: allowPromoCodes !== false });
 
     // Store the invoice record
     const { data: invoice, error: invoiceError } = await supabaseClient

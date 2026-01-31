@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { StripeConnectCard } from '@/components/settings/StripeConnectCard';
 import { ProductCatalogCard } from '@/components/settings/ProductCatalogCard';
+import { DiscountCodesCard } from '@/components/settings/DiscountCodesCard';
 interface DealershipDetails {
   id: string;
   name: string;
@@ -445,6 +446,7 @@ export default function Settings() {
               <div className="space-y-6">
                 <StripeConnectCard />
                 <ProductCatalogCard />
+                <DiscountCodesCard />
               </div>
             </TabsContent>
           )}
