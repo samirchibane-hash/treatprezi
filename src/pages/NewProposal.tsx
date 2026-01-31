@@ -29,6 +29,8 @@ const STEPS = [
 export default function NewProposal() {
   const [currentStep, setCurrentStep] = useState(1);
   const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [address, setAddress] = useState("");
   const [recommendedSystem, setRecommendedSystem] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -49,6 +51,11 @@ export default function NewProposal() {
       default:
         return false;
     }
+  };
+
+  const isValidEmail = (email: string) => {
+    if (!email.trim()) return true; // Optional field
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const handleGenerate = async () => {
@@ -103,6 +110,8 @@ export default function NewProposal() {
           },
           body: JSON.stringify({
             customerName,
+            customerEmail: customerEmail.trim() || null,
+            customerPhone: customerPhone.trim() || null,
             address,
             recommendedSystem: SYSTEMS.find((s) => s.value === recommendedSystem)?.label || recommendedSystem,
             proposalId: proposal.id,
@@ -177,6 +186,8 @@ export default function NewProposal() {
                 onClick={() => {
                   setCurrentStep(1);
                   setCustomerName("");
+                  setCustomerEmail("");
+                  setCustomerPhone("");
                   setAddress("");
                   setRecommendedSystem("");
                   setIsComplete(false);
@@ -263,19 +274,47 @@ export default function NewProposal() {
           </CardHeader>
           <CardContent className="space-y-6">
             {currentStep === 1 && (
-              <div className="space-y-2">
-                <Label htmlFor="customerName" className="font-medium">
-                  Customer Name
-                </Label>
-                <Input
-                  id="customerName"
-                  type="text"
-                  placeholder="e.g., John Smith"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-12 text-lg"
-                  autoFocus
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName" className="font-medium">
+                    Customer Name
+                  </Label>
+                  <Input
+                    id="customerName"
+                    type="text"
+                    placeholder="e.g., John Smith"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="h-12 text-lg"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerEmail" className="font-medium">
+                    Email <span className="text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="customerEmail"
+                    type="email"
+                    placeholder="e.g., john@example.com"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className={`h-12 text-lg ${!isValidEmail(customerEmail) ? 'border-destructive' : ''}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerPhone" className="font-medium">
+                    Phone <span className="text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="customerPhone"
+                    type="tel"
+                    placeholder="e.g., (555) 123-4567"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="h-12 text-lg"
+                  />
+                </div>
               </div>
             )}
 
