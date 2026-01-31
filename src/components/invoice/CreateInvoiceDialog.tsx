@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Receipt, Copy, ExternalLink, Check, Loader2 } from 'lucide-react';
+import { Receipt, Copy, ExternalLink, Check, Loader2, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,6 +40,7 @@ export function CreateInvoiceDialog({ proposal, open, onOpenChange }: CreateInvo
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [customerEmail, setCustomerEmail] = useState('');
+  const [allowPromoCodes, setAllowPromoCodes] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export function CreateInvoiceDialog({ proposal, open, onOpenChange }: CreateInvo
       setPaymentLink(null);
       setSelectedProductIds([]);
       setCustomerEmail('');
+      setAllowPromoCodes(true);
     }
   }, [open]);
 
@@ -104,6 +107,7 @@ export function CreateInvoiceDialog({ proposal, open, onOpenChange }: CreateInvo
           proposalId: proposal.id,
           productIds: selectedProductIds,
           customerEmail: customerEmail.trim(),
+          allowPromoCodes,
         },
       });
 
@@ -237,9 +241,24 @@ export function CreateInvoiceDialog({ proposal, open, onOpenChange }: CreateInvo
             </div>
 
             {selectedProductIds.length > 0 && (
-              <div className="flex justify-between items-center py-3 border-t">
-                <span className="font-medium">Total</span>
-                <span className="text-xl font-bold text-primary">{formatPrice(totalAmount)}</span>
+              <div className="space-y-3 border-t pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total</span>
+                  <span className="text-xl font-bold text-primary">{formatPrice(totalAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-muted-foreground" />
+                    <Label htmlFor="promo-toggle" className="text-sm cursor-pointer">
+                      Allow discount codes
+                    </Label>
+                  </div>
+                  <Switch
+                    id="promo-toggle"
+                    checked={allowPromoCodes}
+                    onCheckedChange={setAllowPromoCodes}
+                  />
+                </div>
               </div>
             )}
 
