@@ -127,10 +127,30 @@ export default function NewProposal() {
         .from("proposals")
         .insert({
           customer_name: customerName,
+          customer_email: customerEmail.trim() || null,
+          customer_phone: customerPhone.trim() || null,
           address: `${street}, ${city}, ${state} ${zipCode}`,
           recommended_system: `Home: ${HOME_AGE_OPTIONS.find(o => o.value === homeAge)?.label}, ${HOUSEHOLD_SIZE_OPTIONS.find(o => o.value === householdSize)?.label}, ${WATER_SOURCE_OPTIONS.find(o => o.value === waterSource)?.label}`,
           dealership_id: profile.dealership_id!,
           created_by: user!.id,
+          // Household details
+          home_age: HOME_AGE_OPTIONS.find(o => o.value === homeAge)?.label || homeAge,
+          household_size: HOUSEHOLD_SIZE_OPTIONS.find(o => o.value === householdSize)?.label || householdSize,
+          num_showers: numShowers || null,
+          num_bathrooms: numBathrooms || null,
+          bottled_water_cases: bottledWaterCases || null,
+          water_source: WATER_SOURCE_OPTIONS.find(o => o.value === waterSource)?.label || waterSource,
+          has_dishwasher: hasDishwasher,
+          has_dryer: hasDryer,
+          has_water_heater: hasWaterHeater,
+          has_ice_maker: hasIceMaker,
+          water_concerns: waterConcerns.trim() || null,
+          // Water test data
+          hardness: hardness ? parseFloat(hardness) : null,
+          iron: iron ? parseFloat(iron) : null,
+          tds: tds ? parseFloat(tds) : null,
+          ph: ph[0],
+          chlorine: chlorine ? parseFloat(chlorine) : null,
         })
         .select()
         .single();

@@ -44,6 +44,51 @@ export type Database = {
         }
         Relationships: []
       }
+      installation_photos: {
+        Row: {
+          created_at: string
+          dealership_id: string
+          file_name: string
+          file_path: string
+          id: string
+          proposal_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          dealership_id: string
+          file_name: string
+          file_path: string
+          id?: string
+          proposal_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          dealership_id?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          proposal_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installation_photos_dealership_id_fkey"
+            columns: ["dealership_id"]
+            isOneToOne: false
+            referencedRelation: "dealerships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installation_photos_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_cents: number
@@ -183,33 +228,87 @@ export type Database = {
       proposals: {
         Row: {
           address: string
+          bottled_water_cases: string | null
+          chlorine: number | null
           created_at: string
           created_by: string
+          customer_email: string | null
           customer_name: string
+          customer_phone: string | null
           dealership_id: string
+          hardness: number | null
+          has_dishwasher: boolean | null
+          has_dryer: boolean | null
+          has_ice_maker: boolean | null
+          has_water_heater: boolean | null
+          home_age: string | null
+          household_size: string | null
           id: string
+          iron: number | null
+          num_bathrooms: string | null
+          num_showers: string | null
+          ph: number | null
           presentation_url: string | null
           recommended_system: string
+          tds: number | null
+          water_concerns: string | null
+          water_source: string | null
         }
         Insert: {
           address: string
+          bottled_water_cases?: string | null
+          chlorine?: number | null
           created_at?: string
           created_by: string
+          customer_email?: string | null
           customer_name: string
+          customer_phone?: string | null
           dealership_id: string
+          hardness?: number | null
+          has_dishwasher?: boolean | null
+          has_dryer?: boolean | null
+          has_ice_maker?: boolean | null
+          has_water_heater?: boolean | null
+          home_age?: string | null
+          household_size?: string | null
           id?: string
+          iron?: number | null
+          num_bathrooms?: string | null
+          num_showers?: string | null
+          ph?: number | null
           presentation_url?: string | null
           recommended_system: string
+          tds?: number | null
+          water_concerns?: string | null
+          water_source?: string | null
         }
         Update: {
           address?: string
+          bottled_water_cases?: string | null
+          chlorine?: number | null
           created_at?: string
           created_by?: string
+          customer_email?: string | null
           customer_name?: string
+          customer_phone?: string | null
           dealership_id?: string
+          hardness?: number | null
+          has_dishwasher?: boolean | null
+          has_dryer?: boolean | null
+          has_ice_maker?: boolean | null
+          has_water_heater?: boolean | null
+          home_age?: string | null
+          household_size?: string | null
           id?: string
+          iron?: number | null
+          num_bathrooms?: string | null
+          num_showers?: string | null
+          ph?: number | null
           presentation_url?: string | null
           recommended_system?: string
+          tds?: number | null
+          water_concerns?: string | null
+          water_source?: string | null
         }
         Relationships: [
           {

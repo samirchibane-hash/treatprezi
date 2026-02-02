@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, ExternalLink, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon, Trash2, Receipt } from 'lucide-react';
+import { Plus, FileText, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { format } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,19 +15,40 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
+import { ProposalDetailCard } from '@/components/proposal/ProposalDetailCard';
 
 interface Proposal {
   id: string;
   customer_name: string;
+  customer_email: string | null;
+  customer_phone: string | null;
   address: string;
   recommended_system: string;
   presentation_url: string | null;
   created_at: string;
   created_by: string;
+  dealership_id: string;
+  // Household details
+  home_age: string | null;
+  household_size: string | null;
+  num_showers: string | null;
+  num_bathrooms: string | null;
+  bottled_water_cases: string | null;
+  water_source: string | null;
+  has_dishwasher: boolean | null;
+  has_dryer: boolean | null;
+  has_water_heater: boolean | null;
+  has_ice_maker: boolean | null;
+  water_concerns: string | null;
+  // Water test data
+  hardness: number | null;
+  iron: number | null;
+  tds: number | null;
+  ph: number | null;
+  chlorine: number | null;
 }
 
 interface RepStats {
@@ -112,17 +132,26 @@ export default function Dashboard() {
     }
   };
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [proposalToDelete, setProposalToDelete] = useState<string | null>(null);
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
 
   const handleDeleteProposal = async (proposalId: string) => {
-    setDeletingId(proposalId);
+    setProposalToDelete(proposalId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!proposalToDelete) return;
+    setDeletingId(proposalToDelete);
     const { error } = await supabase
       .from('proposals')
       .delete()
-      .eq('id', proposalId);
+      .eq('id', proposalToDelete);
 
     if (error) {
       toast({
@@ -135,9 +164,11 @@ export default function Dashboard() {
         title: 'Deleted',
         description: 'Proposal has been deleted.',
       });
-      setProposals((prev) => prev.filter((p) => p.id !== proposalId));
+      setProposals((prev) => prev.filter((p) => p.id !== proposalToDelete));
     }
     setDeletingId(null);
+    setDeleteDialogOpen(false);
+    setProposalToDelete(null);
   };
 
   const handleCreateInvoice = (proposal: Proposal) => {
@@ -317,78 +348,13 @@ export default function Dashboard() {
             ) : (
               <div className="divide-y divide-border">
                 {proposals.map((proposal) => (
-                  <div
+                  <ProposalDetailCard
                     key={proposal.id}
-                    className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-foreground truncate">
-                        {proposal.customer_name}
-                      </h4>
-                      <p className="text-sm text-muted-foreground truncate">{proposal.address}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-md">
-                          {proposal.recommended_system}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(proposal.created_at), 'MMM d, yyyy')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {proposal.presentation_url ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(proposal.presentation_url!, '_blank')}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          View
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground italic">Generating...</span>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCreateInvoice(proposal)}
-                      >
-                        <Receipt className="w-4 h-4" />
-                        Invoice
-                      </Button>
-                      {proposal.created_by === user?.id && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              disabled={deletingId === proposal.id}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Proposal?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete the proposal for {proposal.customer_name}. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteProposal(proposal.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </div>
-                  </div>
+                    proposal={proposal}
+                    onDelete={handleDeleteProposal}
+                    onCreateInvoice={handleCreateInvoice}
+                    isDeleting={deletingId === proposal.id}
+                  />
                 ))}
               </div>
             )}
@@ -401,6 +367,26 @@ export default function Dashboard() {
         open={invoiceDialogOpen}
         onOpenChange={setInvoiceDialogOpen}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Proposal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this proposal. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
