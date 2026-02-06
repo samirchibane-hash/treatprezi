@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Building2, Users, Send, CreditCard } from 'lucide-react';
+import { ArrowLeft, User, Building2, Users, Send, CreditCard, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StripeConnectCard } from '@/components/settings/StripeConnectCard';
 import { ProductCatalogCard } from '@/components/settings/ProductCatalogCard';
 import { DiscountCodesCard } from '@/components/settings/DiscountCodesCard';
+import { ContractTemplatesCard } from '@/components/settings/ContractTemplatesCard';
 interface DealershipDetails {
   id: string;
   name: string;
@@ -231,7 +232,7 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-1'}`}>
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-1'}`}>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -245,6 +246,10 @@ export default function Settings() {
                 <TabsTrigger value="team" className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   <span className="hidden sm:inline">Team</span>
+                </TabsTrigger>
+                <TabsTrigger value="contracts" className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline">Contracts</span>
                 </TabsTrigger>
                 <TabsTrigger value="payments" className="flex items-center gap-2">
                   <CreditCard className="w-4 h-4" />
@@ -437,6 +442,13 @@ export default function Settings() {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+          )}
+
+          {/* Contracts Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="contracts">
+              <ContractTemplatesCard />
             </TabsContent>
           )}
 

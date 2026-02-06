@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      contract_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          dealership_id: string
+          description: string | null
+          html_content: string
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          dealership_id: string
+          description?: string | null
+          html_content: string
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          dealership_id?: string
+          description?: string | null
+          html_content?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_templates_dealership_id_fkey"
+            columns: ["dealership_id"]
+            isOneToOne: false
+            referencedRelation: "dealerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           created_at: string
@@ -24,7 +68,12 @@ export type Database = {
           id: string
           proposal_id: string
           signed_at: string | null
+          signer_ip: string | null
+          signer_name: string | null
+          signing_expires_at: string | null
+          signing_token: string | null
           status: string
+          template_id: string | null
           updated_at: string
         }
         Insert: {
@@ -36,7 +85,12 @@ export type Database = {
           id?: string
           proposal_id: string
           signed_at?: string | null
+          signer_ip?: string | null
+          signer_name?: string | null
+          signing_expires_at?: string | null
+          signing_token?: string | null
           status?: string
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -48,7 +102,12 @@ export type Database = {
           id?: string
           proposal_id?: string
           signed_at?: string | null
+          signer_ip?: string | null
+          signer_name?: string | null
+          signing_expires_at?: string | null
+          signing_token?: string | null
           status?: string
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -64,6 +123,13 @@ export type Database = {
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
             referencedColumns: ["id"]
           },
         ]

@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.generate-contract]
 verify_jwt = false
+
+[functions.sign-contract]
+verify_jwt = false
+
+[functions.verify-signing-token]
+verify_jwt = false
