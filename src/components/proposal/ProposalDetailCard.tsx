@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, User, Droplets, Receipt, Camera, Upload, Trash2, ExternalLink, MapPin, Home } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, Droplets, Receipt, Camera, Upload, Trash2, ExternalLink, MapPin, Home, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
+import { ContractsTab } from './ContractsTab';
 
 interface InstallationPhoto {
   id: string;
@@ -236,7 +237,7 @@ export function ProposalDetailCard({ proposal, onDelete, onCreateInvoice, isDele
           <Card className="mt-4 border shadow-sm">
             <CardContent className="pt-4">
               <Tabs defaultValue="customer" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="customer" className="text-xs sm:text-sm">
                     <User className="w-4 h-4 mr-1 hidden sm:inline" />
                     Customer
@@ -244,6 +245,10 @@ export function ProposalDetailCard({ proposal, onDelete, onCreateInvoice, isDele
                   <TabsTrigger value="water" className="text-xs sm:text-sm">
                     <Droplets className="w-4 h-4 mr-1 hidden sm:inline" />
                     Water Test
+                  </TabsTrigger>
+                  <TabsTrigger value="contracts" className="text-xs sm:text-sm">
+                    <FileText className="w-4 h-4 mr-1 hidden sm:inline" />
+                    Contracts
                   </TabsTrigger>
                   <TabsTrigger value="invoices" className="text-xs sm:text-sm">
                     <Receipt className="w-4 h-4 mr-1 hidden sm:inline" />
@@ -371,6 +376,10 @@ export function ProposalDetailCard({ proposal, onDelete, onCreateInvoice, isDele
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">No water test data recorded</p>
                   )}
+                </TabsContent>
+
+                <TabsContent value="contracts" className="mt-4">
+                  <ContractsTab proposalId={proposal.id} customerName={proposal.customer_name} />
                 </TabsContent>
 
                 <TabsContent value="invoices" className="mt-4">
