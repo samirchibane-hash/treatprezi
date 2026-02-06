@@ -10,6 +10,7 @@ import Onboarding from "./pages/Onboarding";
 import NewProposal from "./pages/NewProposal";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import SignContract from "./pages/SignContract";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/new-proposal" element={<NewProposal />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/sign" element={<SignContract />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
