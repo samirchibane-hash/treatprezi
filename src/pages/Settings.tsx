@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Building2, Users, Send, CreditCard, FileText } from 'lucide-react';
+import { ArrowLeft, User, Building2, Users, Send, CreditCard, FileText, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -230,34 +230,40 @@ export default function Settings() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-1'}`}>
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
+        <Tabs defaultValue="profile" className="flex gap-8" orientation="vertical">
+          <TabsList className="flex flex-col h-fit w-56 flex-shrink-0 bg-card border rounded-lg p-2 sticky top-24 space-y-1">
+            <TabsTrigger value="profile" className="w-full justify-start gap-2 px-3 py-2.5">
               <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Profile</span>
+              Profile
             </TabsTrigger>
             {isAdmin && (
               <>
-                <TabsTrigger value="company" className="flex items-center gap-2">
+                <TabsTrigger value="company" className="w-full justify-start gap-2 px-3 py-2.5">
                   <Building2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Company</span>
+                  Company
                 </TabsTrigger>
-                <TabsTrigger value="team" className="flex items-center gap-2">
+                <TabsTrigger value="team" className="w-full justify-start gap-2 px-3 py-2.5">
                   <Users className="w-4 h-4" />
-                  <span className="hidden sm:inline">Team</span>
+                  Team
                 </TabsTrigger>
-                <TabsTrigger value="contracts" className="flex items-center gap-2">
+                <TabsTrigger value="contracts" className="w-full justify-start gap-2 px-3 py-2.5">
                   <FileText className="w-4 h-4" />
-                  <span className="hidden sm:inline">Contracts</span>
+                  Contracts
                 </TabsTrigger>
-                <TabsTrigger value="payments" className="flex items-center gap-2">
+                <TabsTrigger value="products" className="w-full justify-start gap-2 px-3 py-2.5">
+                  <ShoppingCart className="w-4 h-4" />
+                  Product Catalog
+                </TabsTrigger>
+                <TabsTrigger value="payments" className="w-full justify-start gap-2 px-3 py-2.5">
                   <CreditCard className="w-4 h-4" />
-                  <span className="hidden sm:inline">Payments</span>
+                  Payments
                 </TabsTrigger>
               </>
             )}
           </TabsList>
+
+          <div className="flex-1 min-w-0">
 
           {/* Profile Tab */}
           <TabsContent value="profile">
@@ -452,16 +458,23 @@ export default function Settings() {
             </TabsContent>
           )}
 
+          {/* Products Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="products">
+              <ProductCatalogCard />
+            </TabsContent>
+          )}
+
           {/* Payments Tab (Admin Only) */}
           {isAdmin && (
             <TabsContent value="payments">
               <div className="space-y-6">
                 <StripeConnectCard />
-                <ProductCatalogCard />
                 <DiscountCodesCard />
               </div>
             </TabsContent>
           )}
+          </div>
         </Tabs>
       </main>
     </div>
