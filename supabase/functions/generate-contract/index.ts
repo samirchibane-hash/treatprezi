@@ -169,7 +169,7 @@ serve(async (req) => {
     console.log('Generating PDF via Nutrient API...');
 
     const formData = new FormData();
-    formData.append('document', new Blob([html], { type: 'text/html' }), 'index.html');
+    formData.append('index.html', new Blob([html], { type: 'text/html' }), 'index.html');
     formData.append('instructions', JSON.stringify({
       parts: [{ html: 'index.html' }],
     }));
