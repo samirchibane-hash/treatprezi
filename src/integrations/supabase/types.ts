@@ -364,6 +364,7 @@ export type Database = {
           home_age: string | null
           household_size: string | null
           id: string
+          install_date: string | null
           iron: number | null
           num_bathrooms: string | null
           num_showers: string | null
@@ -392,6 +393,7 @@ export type Database = {
           home_age?: string | null
           household_size?: string | null
           id?: string
+          install_date?: string | null
           iron?: number | null
           num_bathrooms?: string | null
           num_showers?: string | null
@@ -420,6 +422,7 @@ export type Database = {
           home_age?: string | null
           household_size?: string | null
           id?: string
+          install_date?: string | null
           iron?: number | null
           num_bathrooms?: string | null
           num_showers?: string | null

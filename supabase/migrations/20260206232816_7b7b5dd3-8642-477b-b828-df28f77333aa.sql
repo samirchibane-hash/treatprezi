@@ -1,0 +1,1 @@
+ALTER TABLE public.proposals ADD COLUMN install_date date DEFAULT NULL;
