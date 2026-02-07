@@ -78,100 +78,92 @@ export function ProductSelectionStep({ state, update }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Slideshow Card */}
-      <div className="relative rounded-xl border bg-card overflow-hidden animate-fade-in" key={product.id}>
-        {/* Image Section */}
-        <div className="relative w-full h-52 bg-muted flex items-center justify-center overflow-hidden">
+      {/* Product Card — horizontal layout */}
+      <div className="flex gap-5 rounded-xl border bg-card overflow-hidden animate-fade-in" key={product.id}>
+        {/* Square image */}
+        <div className="w-52 min-h-52 flex-shrink-0 bg-muted flex items-center justify-center overflow-hidden">
           {product.image_url ? (
             <img
               src={product.image_url}
               alt={product.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover aspect-square"
             />
           ) : (
             <Image className="w-10 h-10 text-muted-foreground/30" />
           )}
-          {/* Nav arrows overlaying image */}
-          <button
-            onClick={goPrev}
-            disabled={currentIndex === 0}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-background/80 backdrop-blur flex items-center justify-center text-foreground disabled:opacity-30 transition-opacity hover:bg-background"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            onClick={goNext}
-            disabled={currentIndex === products.length - 1}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-background/80 backdrop-blur flex items-center justify-center text-foreground disabled:opacity-30 transition-opacity hover:bg-background"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5 space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-lg font-semibold text-foreground">{product.name}</h3>
+        {/* Details */}
+        <div className="flex-1 py-5 pr-5 flex flex-col justify-between min-w-0">
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-lg font-semibold text-foreground leading-tight">{product.name}</h3>
+                <span className="text-lg font-bold text-primary whitespace-nowrap">
+                  {formatPrice(product.price_cents)}
+                </span>
+              </div>
               {product.description && (
-                <p className="text-sm text-muted-foreground mt-1">{product.description}</p>
+                <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">{product.description}</p>
               )}
             </div>
-            <span className="text-xl font-bold text-primary whitespace-nowrap">
-              {formatPrice(product.price_cents)}
-            </span>
+
+            {product.highlights && product.highlights.length > 0 && (
+              <ul className="space-y-1.5">
+                {product.highlights.map((h, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Check className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">{h}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {/* Highlights */}
-          {product.highlights && product.highlights.length > 0 && (
-            <ul className="space-y-2">
-              {product.highlights.map((h, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground">{h}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {/* Add / Remove Button */}
           <Button
             variant={isSelected ? 'default' : 'outline'}
-            className="w-full"
+            size="sm"
+            className="mt-4 w-fit"
             onClick={() => handleToggle(product.id)}
           >
-            {isSelected ? (
-              <><Check className="w-4 h-4" /> Added to System</>
-            ) : (
-              'Add to System'
-            )}
+            {isSelected ? <><Check className="w-4 h-4" /> Added</> : 'Add to System'}
           </Button>
         </div>
       </div>
 
-      {/* Dot indicators */}
-      <div className="flex items-center justify-center gap-1.5">
-        {products.map((p, i) => {
-          const selected = state.selectedProductIds.includes(p.id);
-          return (
-            <button
-              key={p.id}
-              onClick={() => setCurrentIndex(i)}
-              className={cn(
-                'w-2.5 h-2.5 rounded-full transition-all duration-200',
-                i === currentIndex
-                  ? 'bg-primary scale-125'
-                  : selected
-                    ? 'bg-primary/40'
-                    : 'bg-muted-foreground/20'
-              )}
-              title={p.name}
-            />
-          );
-        })}
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={goPrev} disabled={currentIndex === 0}>
+          <ChevronLeft className="w-4 h-4" /> Previous
+        </Button>
+
+        <div className="flex items-center gap-1.5">
+          {products.map((p, i) => {
+            const selected = state.selectedProductIds.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                onClick={() => setCurrentIndex(i)}
+                className={cn(
+                  'w-2 h-2 rounded-full transition-all duration-200',
+                  i === currentIndex
+                    ? 'bg-primary scale-125'
+                    : selected
+                      ? 'bg-primary/40'
+                      : 'bg-muted-foreground/20'
+                )}
+                title={p.name}
+              />
+            );
+          })}
+        </div>
+
+        <Button variant="ghost" size="sm" onClick={goNext} disabled={currentIndex === products.length - 1}>
+          Next <ChevronRight className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Summary bar */}
+      {/* Summary */}
       {state.selectedProductIds.length > 0 && (
         <div className="flex justify-between items-center border-t pt-3">
           <span className="text-sm text-muted-foreground">
