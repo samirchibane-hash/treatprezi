@@ -40,7 +40,6 @@ serve(async (req) => {
       });
     }
 
-    // Check expiry
     if (contract.signing_expires_at && new Date(contract.signing_expires_at) < new Date()) {
       return new Response(JSON.stringify({ error: 'This signing link has expired' }), {
         status: 410,
@@ -48,7 +47,6 @@ serve(async (req) => {
       });
     }
 
-    // Check if already signed
     if (contract.status === 'signed') {
       return new Response(JSON.stringify({ error: 'This contract has already been signed' }), {
         status: 409,
@@ -56,9 +54,8 @@ serve(async (req) => {
       });
     }
 
-    // Get the client IP from headers
-    const signerIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-      || req.headers.get('cf-connecting-ip') 
+    const signerIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('cf-connecting-ip')
       || 'unknown';
 
     // Download existing PDF
@@ -74,7 +71,6 @@ serve(async (req) => {
       });
     }
 
-    // Use Nutrient API to digitally sign the PDF
     const NUTRIENT_API_KEY = Deno.env.get('NUTRIENT_API_KEY');
     if (!NUTRIENT_API_KEY) {
       return new Response(JSON.stringify({ error: 'Nutrient API key not configured' }), {
@@ -83,74 +79,111 @@ serve(async (req) => {
       });
     }
 
-    console.log('Applying signature via Nutrient API...');
-
     const signedDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
     });
 
-    const formData = new FormData();
-    formData.append('document', fileData, 'contract.pdf');
-
-    // Build Nutrient /build instructions
-    const actions: unknown[] = [];
-
-    // If a drawn signature image was provided, stamp it on the last page
-    if (signatureImage && signatureImage.startsWith('data:image/png;base64,')) {
-      const base64Data = signatureImage.split(',')[1];
-      const binaryStr = atob(base64Data);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-      }
-      const sigBlob = new Blob([bytes], { type: 'image/png' });
-      formData.append('signature', sigBlob, 'signature.png');
-
-      // Stamp the drawn signature image on the last page
-      actions.push({
-        type: "image",
-        image: "signature",
-        pageIndex: "last",
-        position: { x: 72, y: 120 },
-        width: 200,
-        height: 80,
-      });
-    }
-
-    // Always add a text watermark with the signer name + date
-    actions.push({
-      type: "watermark",
-      text: `Signed by ${signerName.trim()} on ${signedDate}`,
-      width: 400,
-      height: 30,
-      fontSize: 10,
-      opacity: 0.7,
-      rotation: 0,
-      position: { x: 100, y: 50 },
-    });
-
-    const instructions = {
-      parts: [{ file: "document" }],
-      actions,
-    };
-
-    formData.append('instructions', JSON.stringify(instructions));
-
-    const nutrientResponse = await fetch('https://api.nutrient.io/build', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${NUTRIENT_API_KEY}` },
-      body: formData,
-    });
-
     let signedPdfBuffer: ArrayBuffer;
 
-    if (nutrientResponse.ok) {
-      signedPdfBuffer = await nutrientResponse.arrayBuffer();
-      console.log('Signed PDF generated, size:', signedPdfBuffer.byteLength);
+    if (signatureImage && signatureImage.startsWith('data:image/png;base64,')) {
+      console.log('Processing wet signature — generating signature page PDF then merging...');
+
+      // Step 1: Create a signature page as HTML with the drawn signature embedded
+      const signaturePageHtml = `<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @page { size: letter; margin: 1in; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a2e; margin: 0; padding: 0; }
+  .sig-page { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 80vh; text-align: center; }
+  .sig-page h2 { color: #0077b6; font-size: 18pt; margin-bottom: 30px; }
+  .sig-image { border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
+  .sig-image img { max-width: 350px; height: auto; }
+  .sig-name { font-size: 12pt; font-weight: 600; margin: 5px 0; }
+  .sig-date { font-size: 10pt; color: #666; margin: 3px 0; }
+  .sig-ip { font-size: 8pt; color: #999; margin-top: 15px; }
+</style>
+</head>
+<body>
+  <div class="sig-page">
+    <h2>Customer Signature</h2>
+    <div class="sig-image">
+      <img src="${signatureImage}" alt="Customer Signature" />
+    </div>
+    <p class="sig-name">${signerName.trim()}</p>
+    <p class="sig-date">Signed on ${signedDate}</p>
+    <p class="sig-ip">IP: ${signerIp}</p>
+  </div>
+</body>
+</html>`;
+
+      // Step 2: Convert signature page HTML to PDF via Nutrient
+      const sigFormData = new FormData();
+      const sigHtmlBlob = new Blob([signaturePageHtml], { type: 'text/html' });
+      sigFormData.append('index.html', sigHtmlBlob, 'index.html');
+      sigFormData.append('instructions', JSON.stringify({
+        parts: [{ html: 'index.html' }],
+      }));
+
+      console.log('Converting signature page HTML to PDF...');
+      const sigPdfResponse = await fetch('https://api.nutrient.io/build', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${NUTRIENT_API_KEY}` },
+        body: sigFormData,
+      });
+
+      if (!sigPdfResponse.ok) {
+        const errText = await sigPdfResponse.text();
+        console.error('Signature page PDF generation failed:', sigPdfResponse.status, errText);
+        // Fall back to watermark-only approach
+        signedPdfBuffer = await applyWatermarkOnly(fileData, signerName, signedDate, NUTRIENT_API_KEY);
+      } else {
+        const sigPdfBlob = await sigPdfResponse.blob();
+        console.log('Signature page PDF generated, size:', sigPdfBlob.size);
+
+        // Step 3: Merge contract + signature page
+        const mergeFormData = new FormData();
+        mergeFormData.append('contract', fileData, 'contract.pdf');
+        mergeFormData.append('signature-page', sigPdfBlob, 'signature-page.pdf');
+        mergeFormData.append('instructions', JSON.stringify({
+          parts: [
+            { file: 'contract' },
+            { file: 'signature-page' },
+          ],
+          actions: [
+            {
+              type: 'watermark',
+              text: `Signed by ${signerName.trim()} on ${signedDate}`,
+              width: 400,
+              height: 30,
+              fontSize: 10,
+              opacity: 0.7,
+              rotation: 0,
+              position: { x: 100, y: 50 },
+            },
+          ],
+        }));
+
+        console.log('Merging contract with signature page...');
+        const mergeResponse = await fetch('https://api.nutrient.io/build', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${NUTRIENT_API_KEY}` },
+          body: mergeFormData,
+        });
+
+        if (mergeResponse.ok) {
+          signedPdfBuffer = await mergeResponse.arrayBuffer();
+          console.log('Merged PDF generated, size:', signedPdfBuffer.byteLength);
+        } else {
+          const mergeErr = await mergeResponse.text();
+          console.warn('Merge failed:', mergeResponse.status, mergeErr);
+          signedPdfBuffer = await applyWatermarkOnly(fileData, signerName, signedDate, NUTRIENT_API_KEY);
+        }
+      }
     } else {
-      // If watermark fails, still proceed with the original PDF
-      console.warn('Nutrient watermark failed:', nutrientResponse.status, await nutrientResponse.text());
-      signedPdfBuffer = await fileData.arrayBuffer();
+      // No drawn signature — just watermark
+      console.log('Type-only signature, applying watermark...');
+      signedPdfBuffer = await applyWatermarkOnly(fileData, signerName, signedDate, NUTRIENT_API_KEY);
     }
 
     // Upload signed version
@@ -175,7 +208,7 @@ serve(async (req) => {
         signer_ip: signerIp,
         file_path: uploadError ? contract.file_path : signedFilePath,
         file_name: uploadError ? contract.file_name : signedFileName,
-        signing_token: null, // Invalidate token after signing
+        signing_token: null,
       })
       .eq('id', contract.id);
 
@@ -204,3 +237,41 @@ serve(async (req) => {
     });
   }
 });
+
+async function applyWatermarkOnly(
+  fileData: Blob,
+  signerName: string,
+  signedDate: string,
+  apiKey: string,
+): Promise<ArrayBuffer> {
+  const formData = new FormData();
+  formData.append('document', fileData, 'contract.pdf');
+  formData.append('instructions', JSON.stringify({
+    parts: [{ file: 'document' }],
+    actions: [
+      {
+        type: 'watermark',
+        text: `Signed by ${signerName.trim()} on ${signedDate}`,
+        width: 400,
+        height: 30,
+        fontSize: 10,
+        opacity: 0.7,
+        rotation: 0,
+        position: { x: 100, y: 50 },
+      },
+    ],
+  }));
+
+  const response = await fetch('https://api.nutrient.io/build', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    body: formData,
+  });
+
+  if (response.ok) {
+    return await response.arrayBuffer();
+  }
+
+  console.warn('Watermark-only also failed:', response.status, await response.text());
+  return await fileData.arrayBuffer();
+}
