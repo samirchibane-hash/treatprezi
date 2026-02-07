@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { PdfViewer } from '@/components/pdf/PdfViewer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -178,11 +179,7 @@ export default function SignContract() {
                   Download
                 </Button>
               </div>
-              <iframe
-                src={contractInfo.pdfUrl}
-                className="w-full h-[500px] sm:h-[600px]"
-                title="Contract Document"
-              />
+              <PdfViewer url={contractInfo.pdfUrl} />
             </CardContent>
           </Card>
         )}
