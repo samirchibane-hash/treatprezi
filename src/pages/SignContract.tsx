@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileText, CheckCircle2, AlertCircle, Loader2, Download, PenLine } from 'lucide-react';
+import { FileText, CheckCircle2, AlertCircle, Loader2, Download, PenLine, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PdfViewer } from '@/components/pdf/PdfViewer';
+import { SignaturePad } from '@/components/signature/SignaturePad';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,6 +33,8 @@ export default function SignContract() {
   const [signing, setSigning] = useState(false);
   const [signed, setSigned] = useState(false);
   const [signerName, setSignerName] = useState('');
+  const [signatureImage, setSignatureImage] = useState<string | null>(null);
+  const [signatureMode, setSignatureMode] = useState<'draw' | 'type'>('draw');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -70,8 +74,12 @@ export default function SignContract() {
 
     setSigning(true);
     try {
+      const body: Record<string, unknown> = { token, signerName: signerName.trim() };
+      if (signatureImage) {
+        body.signatureImage = signatureImage;
+      }
       const { data, error } = await supabase.functions.invoke('sign-contract', {
-        body: { token, signerName: signerName.trim() },
+        body,
       });
 
       if (error) throw error;
@@ -193,7 +201,7 @@ export default function SignContract() {
             </h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signer">Your Full Name (as signature)</Label>
+                <Label htmlFor="signer">Your Full Name</Label>
                 <Input
                   id="signer"
                   value={signerName}
@@ -201,16 +209,47 @@ export default function SignContract() {
                   placeholder="Enter your full legal name"
                   className="text-lg h-12"
                 />
-                <p className="text-xs text-muted-foreground">
-                  By typing your name and clicking "Sign Contract", you agree to the terms outlined in the document above.
-                </p>
               </div>
+
+              <Tabs value={signatureMode} onValueChange={(v) => setSignatureMode(v as 'draw' | 'type')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="draw" className="gap-2">
+                    <PenLine className="w-4 h-4" /> Draw Signature
+                  </TabsTrigger>
+                  <TabsTrigger value="type" className="gap-2">
+                    <Type className="w-4 h-4" /> Type to Sign
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="draw" className="mt-4">
+                  <SignaturePad onSignatureChange={setSignatureImage} />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Use your finger or stylus to draw your signature above.
+                  </p>
+                </TabsContent>
+                <TabsContent value="type" className="mt-4">
+                  <div className="rounded-lg border-2 border-dashed border-muted-foreground/30 bg-white p-6 text-center min-h-[120px] flex items-center justify-center">
+                    {signerName.trim() ? (
+                      <p className="text-3xl italic font-serif text-foreground select-none">{signerName}</p>
+                    ) : (
+                      <p className="text-muted-foreground/40 text-sm">Your name will appear here as your signature</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Your typed name will be used as your digital signature.
+                  </p>
+                </TabsContent>
+              </Tabs>
+
+              <p className="text-xs text-muted-foreground">
+                By clicking "Sign Contract", you agree to the terms outlined in the document above.
+              </p>
+
               <Button
                 variant="water"
                 size="lg"
                 className="w-full"
                 onClick={handleSign}
-                disabled={signing || !signerName.trim()}
+                disabled={signing || !signerName.trim() || (signatureMode === 'draw' && !signatureImage)}
               >
                 {signing ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Signing...</>
