@@ -88,6 +88,7 @@ const DEFAULT_TEMPLATE = `<!DOCTYPE html>
   {{household_section}}
   {{water_test_section}}
   {{water_concerns_section}}
+  {{products_section}}
 
   <div class="signature-section">
     <h2>Agreement</h2>
@@ -130,6 +131,7 @@ const AVAILABLE_VARIABLES = [
   { key: '{{household_section}}', desc: 'Auto-generated household details table' },
   { key: '{{water_test_section}}', desc: 'Auto-generated water test results table' },
   { key: '{{water_concerns_section}}', desc: 'Customer water concerns' },
+  { key: '{{products_section}}', desc: 'Auto-generated products, discounts & pricing table' },
 ];
 
 export function ContractTemplatesCard() {
@@ -209,6 +211,7 @@ export function ContractTemplatesCard() {
       '{{household_section}}': '<h2>Property Details</h2><table><thead><tr><th>Detail</th><th>Value</th></tr></thead><tbody><tr><td>Home Age</td><td>6-10 years</td></tr><tr><td>Household Size</td><td>3-4 people</td></tr><tr><td>Water Source</td><td>City/Municipal Water</td></tr></tbody></table>',
       '{{water_test_section}}': '<h2>Water Test Results</h2><table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody><tr><td>Hardness</td><td>15 gpg</td></tr><tr><td>Iron</td><td>0.5 ppm</td></tr><tr><td>pH Level</td><td>7.2</td></tr></tbody></table>',
       '{{water_concerns_section}}': '<h2>Customer Concerns</h2><p>Hard water buildup, chlorine taste</p>',
+      '{{products_section}}': '<h2>System Components &amp; Pricing</h2><table><thead><tr><th>Product</th><th>Description</th><th style="text-align:right">Price</th></tr></thead><tbody><tr><td>Whole House Softener</td><td>High-capacity water softener</td><td style="text-align:right">$2,499.00</td></tr><tr><td>RO Drinking System</td><td>Under-sink reverse osmosis</td><td style="text-align:right">$899.00</td></tr><tr style="border-top:2px solid #e0e0e0"><td colspan="2" style="font-weight:600">Subtotal</td><td style="text-align:right;font-weight:600">$3,398.00</td></tr><tr style="color:#16a34a"><td colspan="2">Discount (SAVE20 — 20% off)</td><td style="text-align:right">-$679.60</td></tr><tr style="border-top:2px solid #0077b6"><td colspan="2" style="font-weight:700;font-size:12pt">Total</td><td style="text-align:right;font-weight:700;font-size:12pt;color:#0077b6">$2,718.40</td></tr></tbody></table>',
     };
 
     let preview = html;

@@ -15,6 +15,10 @@ export function ContractStep({ state }: Props) {
   }
 
   return (
-    <ContractsTab proposalId={state.proposalId} customerName={state.customerName} />
+    <ContractsTab
+      proposalId={state.proposalId}
+      customerName={state.customerName}
+      selectedProductIds={state.selectedProductIds}
+    />
   );
 }
