@@ -50,16 +50,27 @@ export function PdfViewer({ url, className = '' }: PdfViewerProps) {
     if (!pdf || !canvasRef.current || !containerRef.current) return;
 
     const page = await pdf.getPage(currentPage);
-    const containerWidth = containerRef.current.clientWidth - 32; // padding
+    const container = containerRef.current;
+    const containerWidth = container.clientWidth - 32; // padding
+    const containerHeight = container.clientHeight || window.innerHeight * 0.7;
     const unscaledViewport = page.getViewport({ scale: 1 });
-    const fitScale = containerWidth / unscaledViewport.width;
+
+    // Fit to container while preserving aspect ratio (fit within both width and height)
+    const scaleByWidth = containerWidth / unscaledViewport.width;
+    const scaleByHeight = (containerHeight - 16) / unscaledViewport.height;
+    const fitScale = Math.min(scaleByWidth, scaleByHeight);
     const finalScale = fitScale * scale;
     const viewport = page.getViewport({ scale: finalScale });
 
     const canvas = canvasRef.current;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = viewport.width * dpr;
+    canvas.height = viewport.height * dpr;
+    canvas.style.width = `${viewport.width}px`;
+    canvas.style.height = `${viewport.height}px`;
+
     const context = canvas.getContext('2d')!;
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     await page.render({ canvasContext: context, viewport }).promise;
   }, [pdf, currentPage, scale]);
