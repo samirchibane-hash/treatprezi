@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { token, signerName } = await req.json();
+    const { token, signerName, signatureImage } = await req.json();
     if (!token || !signerName?.trim()) {
       return new Response(JSON.stringify({ error: 'Token and signer name are required' }), {
         status: 400,
@@ -83,34 +83,57 @@ serve(async (req) => {
       });
     }
 
-    console.log('Applying digital signature via Nutrient API...');
+    console.log('Applying signature via Nutrient API...');
 
-    // Build instructions for the Nutrient /build endpoint
-    // Add a watermark-style annotation with the signer's name and date
     const signedDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
     });
 
-    const instructions = {
-      parts: [
-        { file: "document" }
-      ],
-      actions: [
-        {
-          type: "watermark",
-          text: `Signed by ${signerName.trim()} on ${signedDate}`,
-          width: 400,
-          height: 30,
-          fontSize: 10,
-          opacity: 0.7,
-          rotation: 0,
-          position: { x: 100, y: 50 }
-        }
-      ]
-    };
-
     const formData = new FormData();
     formData.append('document', fileData, 'contract.pdf');
+
+    // Build Nutrient /build instructions
+    const actions: unknown[] = [];
+
+    // If a drawn signature image was provided, stamp it on the last page
+    if (signatureImage && signatureImage.startsWith('data:image/png;base64,')) {
+      const base64Data = signatureImage.split(',')[1];
+      const binaryStr = atob(base64Data);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      const sigBlob = new Blob([bytes], { type: 'image/png' });
+      formData.append('signature', sigBlob, 'signature.png');
+
+      // Stamp the drawn signature image on the last page
+      actions.push({
+        type: "image",
+        image: "signature",
+        pageIndex: "last",
+        position: { x: 72, y: 120 },
+        width: 200,
+        height: 80,
+      });
+    }
+
+    // Always add a text watermark with the signer name + date
+    actions.push({
+      type: "watermark",
+      text: `Signed by ${signerName.trim()} on ${signedDate}`,
+      width: 400,
+      height: 30,
+      fontSize: 10,
+      opacity: 0.7,
+      rotation: 0,
+      position: { x: 100, y: 50 },
+    });
+
+    const instructions = {
+      parts: [{ file: "document" }],
+      actions,
+    };
+
     formData.append('instructions', JSON.stringify(instructions));
 
     const nutrientResponse = await fetch('https://api.nutrient.io/build', {
