@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Loader2, Plus, Trash2, Copy, Check, Link, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Download, Loader2, Plus, Trash2, Copy, Check, Link, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -435,9 +435,14 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Badge variant={sc.variant}>{sc.label}</Badge>
                   {contract.signing_token && contract.status !== 'signed' && (
-                    <Button variant="ghost" size="sm" onClick={() => handleCopySigningLink(contract)} title="Copy signing link">
-                      {copiedLink === contract.id ? <Check className="w-4 h-4" /> : <Link className="w-4 h-4" />}
-                    </Button>
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => window.open(`${window.location.origin}/sign?token=${contract.signing_token}`, '_blank')} title="Open signing page">
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleCopySigningLink(contract)} title="Copy signing link">
+                        {copiedLink === contract.id ? <Check className="w-4 h-4" /> : <Link className="w-4 h-4" />}
+                      </Button>
+                    </>
                   )}
                   <Button variant="ghost" size="sm" onClick={() => handleDownload(contract)} disabled={downloading === contract.id} title="Download">
                     {downloading === contract.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
