@@ -28,7 +28,7 @@ export function StepSidebar({ currentStep, proposalId, onStepClick }: StepSideba
   };
 
   return (
-    <nav className="w-64 flex-shrink-0 hidden lg:block">
+    <nav className="w-56 flex-shrink-0 hidden md:block lg:w-64">
       <div className="sticky top-24 space-y-1">
         {STEPS.map((step, index) => {
           const isActive = currentStep === step.id;
@@ -106,7 +106,7 @@ export function MobileStepIndicator({ currentStep }: { currentStep: number }) {
   if (!step) return null;
 
   return (
-    <div className="lg:hidden flex items-center gap-3 mb-6 px-1">
+    <div className="md:hidden flex items-center gap-3 mb-6 px-1">
       <div className="w-10 h-10 gradient-water rounded-xl flex items-center justify-center shadow-sm">
         <step.icon className="w-4 h-4 text-primary-foreground" />
       </div>
