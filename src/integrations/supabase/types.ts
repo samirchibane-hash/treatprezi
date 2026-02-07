@@ -271,7 +271,9 @@ export type Database = {
           created_at: string
           dealership_id: string
           description: string | null
+          highlights: string[] | null
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
           price_cents: number
@@ -281,7 +283,9 @@ export type Database = {
           created_at?: string
           dealership_id: string
           description?: string | null
+          highlights?: string[] | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
           price_cents: number
@@ -291,7 +295,9 @@ export type Database = {
           created_at?: string
           dealership_id?: string
           description?: string | null
+          highlights?: string[] | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
           price_cents?: number
