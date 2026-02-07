@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Loader2, Plus, Trash2, Copy, Check, Send, Link } from 'lucide-react';
+import { FileText, Download, Loader2, Plus, Trash2, Copy, Check, Link, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -34,12 +36,34 @@ interface Template {
   is_default: boolean;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+}
+
+interface PromotionCode {
+  id: string;
+  code: string;
+  coupon: {
+    id: string;
+    name: string;
+    percent_off: number | null;
+    amount_off: number | null;
+    currency: string | null;
+  };
+  active: boolean;
+}
+
 interface ContractsTabProps {
   proposalId: string;
   customerName: string;
+  /** Pre-selected product IDs from the wizard */
+  selectedProductIds?: string[];
 }
 
-export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
+export function ContractsTab({ proposalId, customerName, selectedProductIds: preSelectedIds }: ContractsTabProps) {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('default');
@@ -50,10 +74,27 @@ export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  // Product & discount selection
+  const [products, setProducts] = useState<Product[]>([]);
+  const [contractProductIds, setContractProductIds] = useState<string[]>(preSelectedIds || []);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [promoCodes, setPromoCodes] = useState<PromotionCode[]>([]);
+  const [selectedPromoId, setSelectedPromoId] = useState<string>('none');
+  const [loadingPromos, setLoadingPromos] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+
   useEffect(() => {
     fetchContracts();
     fetchTemplates();
+    fetchProducts();
+    fetchPromoCodes();
   }, [proposalId]);
+
+  useEffect(() => {
+    if (preSelectedIds?.length) {
+      setContractProductIds(preSelectedIds);
+    }
+  }, [preSelectedIds]);
 
   const fetchContracts = async () => {
     setLoading(true);
@@ -83,38 +124,118 @@ export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
     }
   };
 
+  const fetchProducts = async () => {
+    setLoadingProducts(true);
+    const { data } = await supabase
+      .from('products')
+      .select('id, name, description, price_cents')
+      .eq('is_active', true)
+      .order('name');
+    if (data) setProducts(data);
+    setLoadingProducts(false);
+  };
+
+  const fetchPromoCodes = async () => {
+    setLoadingPromos(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-coupons', {
+        body: { action: 'list' },
+      });
+      if (!error && data?.coupons) {
+        const codes: PromotionCode[] = [];
+        for (const coupon of data.coupons) {
+          for (const pc of coupon.promotion_codes || []) {
+            if (pc.active) {
+              codes.push({
+                id: pc.id,
+                code: pc.code,
+                coupon: {
+                  id: coupon.id,
+                  name: coupon.name,
+                  percent_off: coupon.percent_off,
+                  amount_off: coupon.amount_off,
+                  currency: coupon.currency,
+                },
+                active: pc.active,
+              });
+            }
+          }
+        }
+        setPromoCodes(codes);
+      }
+    } catch {
+      // Silently fail — user may not be admin or no Stripe connected
+    }
+    setLoadingPromos(false);
+  };
+
+  const formatPrice = (cents: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+
+  const handleProductToggle = (productId: string) => {
+    setContractProductIds(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const selectedProducts = products.filter(p => contractProductIds.includes(p.id));
+  const subtotal = selectedProducts.reduce((sum, p) => sum + p.price_cents, 0);
+
+  const getDiscountInfo = () => {
+    if (selectedPromoId === 'none') return null;
+    const promo = promoCodes.find(p => p.id === selectedPromoId);
+    if (!promo) return null;
+    const { coupon } = promo;
+    if (coupon.percent_off) {
+      return { label: `${promo.code} (${coupon.percent_off}% off)`, amountOff: Math.round(subtotal * coupon.percent_off / 100) };
+    }
+    if (coupon.amount_off) {
+      return { label: `${promo.code} ($${(coupon.amount_off / 100).toFixed(2)} off)`, amountOff: coupon.amount_off };
+    }
+    return null;
+  };
+
+  const discountInfo = getDiscountInfo();
+  const total = subtotal - (discountInfo?.amountOff || 0);
+
   const handleGenerate = async () => {
+    if (contractProductIds.length === 0) {
+      toast({ title: 'No products selected', description: 'Select at least one product to include in the contract.', variant: 'destructive' });
+      return;
+    }
+
     setGenerating(true);
     try {
-      const body: Record<string, string> = { proposalId };
+      const selectedPromo = selectedPromoId !== 'none' ? promoCodes.find(p => p.id === selectedPromoId) : null;
+
+      const body: Record<string, unknown> = {
+        proposalId,
+        productIds: contractProductIds,
+        discount: selectedPromo ? {
+          code: selectedPromo.code,
+          name: selectedPromo.coupon.name,
+          percent_off: selectedPromo.coupon.percent_off,
+          amount_off: selectedPromo.coupon.amount_off,
+          currency: selectedPromo.coupon.currency,
+        } : null,
+      };
       if (selectedTemplateId !== 'default') {
         body.templateId = selectedTemplateId;
       }
 
-      const { data, error } = await supabase.functions.invoke('generate-contract', {
-        body,
-      });
+      const { data, error } = await supabase.functions.invoke('generate-contract', { body });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({
-        title: 'Contract generated!',
-        description: `Contract for ${customerName} is ready.`,
-      });
-
-      if (data?.downloadUrl) {
-        window.open(data.downloadUrl, '_blank');
-      }
-
+      toast({ title: 'Contract generated!', description: `Contract for ${customerName} is ready.` });
+      if (data?.downloadUrl) window.open(data.downloadUrl, '_blank');
       fetchContracts();
     } catch (error) {
       console.error('Error generating contract:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to generate contract',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to generate contract', variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
@@ -123,14 +244,9 @@ export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
   const handleDownload = async (contract: Contract) => {
     setDownloading(contract.id);
     try {
-      const { data, error } = await supabase.storage
-        .from('contracts')
-        .createSignedUrl(contract.file_path, 3600);
-
+      const { data, error } = await supabase.storage.from('contracts').createSignedUrl(contract.file_path, 3600);
       if (error) throw error;
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank');
-      }
+      if (data?.signedUrl) window.open(data.signedUrl, '_blank');
     } catch {
       toast({ title: 'Error', description: 'Failed to download contract', variant: 'destructive' });
     } finally {
@@ -143,7 +259,6 @@ export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
       toast({ title: 'No signing link', description: 'This contract does not have a signing link.', variant: 'destructive' });
       return;
     }
-
     const signingUrl = `${window.location.origin}/sign?token=${contract.signing_token}`;
     await navigator.clipboard.writeText(signingUrl);
     setCopiedLink(contract.id);
@@ -173,30 +288,120 @@ export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end gap-2 justify-end">
-        {templates.length > 0 && (
-          <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Template" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="default">Default Template</SelectItem>
-              {templates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name} {t.is_default ? '(default)' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
-          {generating ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
-          ) : (
-            <><Plus className="w-4 h-4" /> Generate Contract</>
-          )}
+      {/* Config toggle */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => setShowConfig(!showConfig)} className="text-muted-foreground">
+          {showConfig ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
+          {showConfig ? 'Hide' : 'Configure'} Products & Discounts
         </Button>
+        <div className="flex items-end gap-2">
+          {templates.length > 0 && (
+            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default Template</SelectItem>
+                {templates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name} {t.is_default ? '(default)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating || contractProductIds.length === 0}>
+            {generating ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+            ) : (
+              <><Plus className="w-4 h-4" /> Generate Contract</>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {/* Product & Discount Selection */}
+      {showConfig && (
+        <div className="space-y-4 rounded-lg border p-4 bg-muted/30 animate-fade-in">
+          {/* Products */}
+          <div className="space-y-2">
+            <Label className="font-medium">Products to Include</Label>
+            {loadingProducts ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : products.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No products available.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {products.map((product) => (
+                  <label
+                    key={product.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                  >
+                    <Checkbox
+                      checked={contractProductIds.includes(product.id)}
+                      onCheckedChange={() => handleProductToggle(product.id)}
+                    />
+                    <div className="flex-1 flex justify-between items-center min-w-0">
+                      <span className="text-sm font-medium truncate">{product.name}</span>
+                      <span className="text-sm font-semibold text-primary whitespace-nowrap ml-2">
+                        {formatPrice(product.price_cents)}
+                      </span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Discount Code */}
+          <div className="space-y-2">
+            <Label className="font-medium">Apply Discount</Label>
+            {loadingPromos ? (
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : promoCodes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active discount codes available.</p>
+            ) : (
+              <Select value={selectedPromoId} onValueChange={setSelectedPromoId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="No discount" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No discount</SelectItem>
+                  {promoCodes.map((pc) => (
+                    <SelectItem key={pc.id} value={pc.id}>
+                      {pc.code} — {pc.coupon.percent_off ? `${pc.coupon.percent_off}% off` : `$${((pc.coupon.amount_off || 0) / 100).toFixed(2)} off`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Totals */}
+          {contractProductIds.length > 0 && (
+            <div className="border-t pt-3 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal ({contractProductIds.length} item{contractProductIds.length > 1 ? 's' : ''})</span>
+                <span className="font-medium">{formatPrice(subtotal)}</span>
+              </div>
+              {discountInfo && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount ({discountInfo.label})</span>
+                  <span>-{formatPrice(discountInfo.amountOff)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-base border-t pt-2">
+                <span>Total</span>
+                <span className="text-primary">{formatPrice(total)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground text-center py-8">Loading contracts...</p>
@@ -204,9 +409,9 @@ export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
         <div className="text-center py-8">
           <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
           <p className="text-sm text-muted-foreground mb-4">No contracts generated yet</p>
-          <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
+          <Button variant="outline" size="sm" onClick={() => { setShowConfig(true); }} disabled={generating}>
             <FileText className="w-4 h-4 mr-2" />
-            Generate First Contract
+            Configure & Generate Contract
           </Button>
         </div>
       ) : (
@@ -228,32 +433,15 @@ export function ContractsTab({ proposalId, customerName }: ContractsTabProps) {
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Badge variant={sc.variant}>{sc.label}</Badge>
                   {contract.signing_token && contract.status !== 'signed' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCopySigningLink(contract)}
-                      title="Copy signing link"
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => handleCopySigningLink(contract)} title="Copy signing link">
                       {copiedLink === contract.id ? <Check className="w-4 h-4" /> : <Link className="w-4 h-4" />}
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(contract)}
-                    disabled={downloading === contract.id}
-                    title="Download"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => handleDownload(contract)} disabled={downloading === contract.id} title="Download">
                     {downloading === contract.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   </Button>
                   {contract.created_by === user?.id && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(contract)}
-                      title="Delete"
-                    >
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(contract)} title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   )}

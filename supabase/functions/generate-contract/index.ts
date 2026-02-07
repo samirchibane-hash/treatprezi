@@ -34,13 +34,15 @@ serve(async (req) => {
       });
     }
 
-    const { proposalId, templateId } = await req.json();
+    const { proposalId, templateId, productIds, discount } = await req.json();
     if (!proposalId) {
       return new Response(JSON.stringify({ error: 'proposalId is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('Generating contract for proposal:', proposalId, 'products:', productIds?.length, 'discount:', discount?.code);
 
     // Fetch proposal
     const { data: proposal, error: proposalError } = await supabase
@@ -57,13 +59,23 @@ serve(async (req) => {
       });
     }
 
-    // Fetch dealership & rep info
-    const [{ data: dealership }, { data: repProfile }] = await Promise.all([
+    // Fetch dealership, rep, and products in parallel
+    const fetchPromises: Promise<any>[] = [
       supabase.from('dealerships').select('name, address, phone').eq('id', proposal.dealership_id).maybeSingle(),
       supabase.from('profiles').select('full_name, email, phone').eq('user_id', proposal.created_by).maybeSingle(),
-    ]);
+    ];
 
-    // Fetch template - use specified, or default, or built-in
+    if (productIds?.length) {
+      fetchPromises.push(
+        supabase.from('products').select('name, description, price_cents').in('id', productIds).eq('is_active', true)
+      );
+    }
+
+    const [{ data: dealership }, { data: repProfile }, productsResult] = await Promise.all(fetchPromises);
+
+    const selectedProducts = productsResult?.data || [];
+
+    // Fetch template
     let templateHtml: string | null = null;
     let usedTemplateId: string | null = null;
 
@@ -80,7 +92,6 @@ serve(async (req) => {
     }
 
     if (!templateHtml) {
-      // Try default template for the dealership
       const { data: defaultTemplate } = await supabase
         .from('contract_templates')
         .select('id, html_content')
@@ -96,6 +107,9 @@ serve(async (req) => {
     const today = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
+
+    const formatPrice = (cents: number) =>
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 
     // Build water test section
     const waterTests: string[] = [];
@@ -125,6 +139,45 @@ serve(async (req) => {
       ? `<h2>Customer Concerns</h2><p>${proposal.water_concerns}</p>`
       : '';
 
+    // Build products section
+    let productsSection = '';
+    if (selectedProducts.length > 0) {
+      const subtotal = selectedProducts.reduce((sum: number, p: any) => sum + p.price_cents, 0);
+      const productRows = selectedProducts.map((p: any) =>
+        `<tr><td>${p.name}</td><td>${p.description || ''}</td><td style="text-align:right">${formatPrice(p.price_cents)}</td></tr>`
+      ).join('');
+
+      let discountRow = '';
+      let totalAmount = subtotal;
+
+      if (discount) {
+        let discountAmount = 0;
+        let discountLabel = '';
+        if (discount.percent_off) {
+          discountAmount = Math.round(subtotal * discount.percent_off / 100);
+          discountLabel = `Discount (${discount.code} — ${discount.percent_off}% off)`;
+        } else if (discount.amount_off) {
+          discountAmount = discount.amount_off;
+          discountLabel = `Discount (${discount.code} — ${formatPrice(discount.amount_off)} off)`;
+        }
+        if (discountAmount > 0) {
+          totalAmount = subtotal - discountAmount;
+          discountRow = `<tr style="color:#16a34a"><td colspan="2">${discountLabel}</td><td style="text-align:right">-${formatPrice(discountAmount)}</td></tr>`;
+        }
+      }
+
+      productsSection = `<h2>System Components & Pricing</h2>
+        <table>
+          <thead><tr><th>Product</th><th>Description</th><th style="text-align:right">Price</th></tr></thead>
+          <tbody>
+            ${productRows}
+            <tr style="border-top:2px solid #e0e0e0"><td colspan="2" style="font-weight:600">Subtotal</td><td style="text-align:right;font-weight:600">${formatPrice(subtotal)}</td></tr>
+            ${discountRow}
+            <tr style="border-top:2px solid #0077b6"><td colspan="2" style="font-weight:700;font-size:12pt">Total</td><td style="text-align:right;font-weight:700;font-size:12pt;color:#0077b6">${formatPrice(totalAmount)}</td></tr>
+          </tbody>
+        </table>`;
+    }
+
     // Variable replacements
     const variables: Record<string, string> = {
       '{{company_name}}': dealership?.name || 'Water Treatment Services',
@@ -142,18 +195,17 @@ serve(async (req) => {
       '{{household_section}}': householdSection,
       '{{water_test_section}}': waterTestSection,
       '{{water_concerns_section}}': waterConcernsSection,
+      '{{products_section}}': productsSection,
     };
 
     let html: string;
 
     if (templateHtml) {
-      // Use custom template with variable replacement
       html = templateHtml;
       Object.entries(variables).forEach(([key, value]) => {
         html = html.replaceAll(key, value);
       });
     } else {
-      // Fall back to built-in template
       html = buildDefaultHtml(variables);
     }
 
@@ -215,7 +267,7 @@ serve(async (req) => {
 
     // Generate signing token
     const signingToken = crypto.randomUUID();
-    const signingExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+    const signingExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     // Insert contract record
     const { data: contract, error: contractError } = await serviceClient
@@ -305,9 +357,10 @@ function buildDefaultHtml(v: Record<string, string>): string {
   ${v['{{household_section}}']}
   ${v['{{water_test_section}}']}
   ${v['{{water_concerns_section}}']}
+  ${v['{{products_section}}']}
   <div class="signature-section">
     <h2>Agreement</h2>
-    <p>By signing below, the customer acknowledges and agrees to the installation of the recommended water treatment system at the service address listed above.</p>
+    <p>By signing below, the customer acknowledges and agrees to the purchase and installation of the system components listed above at the service address.</p>
     <div class="sig-line">
       <div class="sig-block"><div class="line"></div><p><strong>Customer Signature</strong></p><p>${v['{{customer_name}}']}</p><p>Date: _______________</p></div>
       <div class="sig-block"><div class="line"></div><p><strong>Company Representative</strong></p><p>${v['{{rep_name}}']}</p><p>Date: _______________</p></div>
