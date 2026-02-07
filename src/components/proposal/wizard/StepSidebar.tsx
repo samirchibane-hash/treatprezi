@@ -7,7 +7,7 @@ export const STEPS = [
   { id: 3, title: 'Household', icon: Home },
   { id: 4, title: 'Water Test', icon: Droplets },
   { id: 5, title: 'Presentation', icon: Sparkles },
-  { id: 6, title: 'Choose Products', icon: ShoppingCart },
+  { id: 6, title: 'System Buildout', icon: ShoppingCart },
   { id: 7, title: 'Generate Invoice', icon: Receipt },
   { id: 8, title: 'Contract', icon: FileText },
   { id: 9, title: 'Install Details', icon: Camera },
