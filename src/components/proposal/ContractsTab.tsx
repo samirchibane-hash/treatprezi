@@ -231,7 +231,9 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
       if (data?.error) throw new Error(data.error);
 
       toast({ title: 'Contract generated!', description: `Contract for ${customerName} is ready.` });
-      if (data?.downloadUrl) window.open(data.downloadUrl, '_blank');
+      if (data?.signingToken) {
+        window.open(`${window.location.origin}/sign?token=${data.signingToken}`, '_blank');
+      }
       fetchContracts();
     } catch (error) {
       console.error('Error generating contract:', error);
