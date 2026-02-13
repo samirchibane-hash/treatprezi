@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, FileText, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -31,7 +30,6 @@ interface Proposal {
   created_at: string;
   created_by: string;
   dealership_id: string;
-  // Household details
   home_age: string | null;
   household_size: string | null;
   num_showers: string | null;
@@ -43,7 +41,6 @@ interface Proposal {
   has_water_heater: boolean | null;
   has_ice_maker: boolean | null;
   water_concerns: string | null;
-  // Water test data
   hardness: number | null;
   iron: number | null;
   tds: number | null;
@@ -66,12 +63,13 @@ export default function Dashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [proposalToDelete, setProposalToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     } else if (!authLoading && user && profile && !profile.dealership_id) {
-      // Only redirect to onboarding if profile is loaded AND dealership_id is missing
       navigate('/onboarding');
     }
   }, [user, profile, authLoading, navigate]);
@@ -115,8 +113,8 @@ export default function Dashboard() {
         const stats: { [key: string]: { name: string; count: number } } = {};
         
         proposalsData.forEach((proposal) => {
-          const profile = profilesData.find((p) => p.user_id === proposal.created_by);
-          const name = profile?.full_name || 'Unknown';
+          const prof = profilesData.find((p) => p.user_id === proposal.created_by);
+          const name = prof?.full_name || 'Unknown';
           if (!stats[proposal.created_by]) {
             stats[proposal.created_by] = { name, count: 0 };
           }
@@ -131,9 +129,6 @@ export default function Dashboard() {
       }
     }
   };
-
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [proposalToDelete, setProposalToDelete] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
@@ -176,9 +171,15 @@ export default function Dashboard() {
     setInvoiceDialogOpen(true);
   };
 
+  const thisMonthCount = proposals.filter((p) => {
+    const d = new Date(p.created_at);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
   if (authLoading || !profile?.dealership_id) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <LoadingSpinner size="lg" message="Loading your dashboard..." />
       </div>
     );
@@ -186,168 +187,135 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-lg">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 gradient-water rounded-xl flex items-center justify-center shadow-sm">
-              <Droplet className="w-5 h-5 text-primary-foreground" />
+      {/* Apple-style frosted navbar */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-xl backdrop-saturate-150">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 gradient-water rounded-lg flex items-center justify-center">
+              <Droplet className="w-4 h-4 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="font-bold text-foreground">TreatEngine</h1>
-              <p className="text-xs text-muted-foreground capitalize">
-                {userRole?.role === 'admin' ? 'Dealership Admin' : 'Sales Rep'}
-              </p>
-            </div>
+            <span className="font-semibold text-[15px] tracking-tight text-foreground">TreatEngine</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground hidden sm:block">
+          <div className="flex items-center gap-1">
+            <span className="text-[13px] text-muted-foreground hidden sm:block mr-2">
               {profile.full_name}
             </span>
-            <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
-              <SettingsIcon className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigate('/settings')}>
+              <SettingsIcon className="w-4 h-4 text-muted-foreground" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 text-muted-foreground" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-0 shadow-soft">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Total Proposals</p>
-                  <p className="text-3xl font-bold text-foreground">{proposals.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {userRole?.role === 'admin' && (
-            <Card className="border-0 shadow-soft">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">Team Members</p>
-                    <p className="text-3xl font-bold text-foreground">{repStats.length}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
-                    <Users className="w-6 h-6 text-accent" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="border-0 shadow-soft">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">This Month</p>
-                  <p className="text-3xl font-bold text-foreground">
-                    {proposals.filter((p) => {
-                      const proposalDate = new Date(p.created_at);
-                      const now = new Date();
-                      return (
-                        proposalDate.getMonth() === now.getMonth() &&
-                        proposalDate.getFullYear() === now.getFullYear()
-                      );
-                    }).length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-teal-500/10 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-teal-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <main className="max-w-6xl mx-auto px-6 py-10">
+        {/* Greeting */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {profile.full_name?.split(' ')[0]}
+          </h1>
+          <p className="text-[15px] text-muted-foreground mt-1">
+            Here's what's happening with your proposals.
+          </p>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <Button variant="water" size="lg" onClick={() => navigate('/new-proposal')}>
-            <Plus className="w-5 h-5" />
+        {/* Metric tiles — Apple widget style */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+          <MetricTile
+            label="Total Proposals"
+            value={proposals.length}
+            icon={<FileText className="w-5 h-5" />}
+            color="primary"
+          />
+          {userRole?.role === 'admin' && (
+            <MetricTile
+              label="Team Members"
+              value={repStats.length}
+              icon={<Users className="w-5 h-5" />}
+              color="accent"
+            />
+          )}
+          <MetricTile
+            label="This Month"
+            value={thisMonthCount}
+            icon={<TrendingUp className="w-5 h-5" />}
+            color="accent"
+          />
+        </div>
+
+        {/* New Proposal CTA */}
+        <div className="mb-10">
+          <Button
+            onClick={() => navigate('/new-proposal')}
+            className="h-11 px-6 rounded-xl bg-primary text-primary-foreground font-medium text-[14px] shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all"
+          >
+            <Plus className="w-4 h-4" />
             New Proposal
           </Button>
         </div>
 
-        {/* Admin: Rep Stats */}
+        {/* Admin: Team Performance */}
         {userRole?.role === 'admin' && repStats.length > 0 && (
-          <Card className="mb-8 border-0 shadow-soft">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Team Performance
-              </CardTitle>
-              <CardDescription>Proposals generated by each team member</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {repStats.map((stat) => (
-                  <div key={stat.rep_name} className="flex items-center justify-between">
-                    <span className="font-medium text-foreground">{stat.rep_name}</span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full gradient-water rounded-full transition-all duration-500"
-                          style={{
-                            width: `${(stat.count / Math.max(...repStats.map((s) => s.count))) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-semibold text-muted-foreground w-8 text-right">
-                        {stat.count}
-                      </span>
+          <section className="mb-10 animate-fade-in">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground mb-4">Team Performance</h2>
+            <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4">
+              {repStats.map((stat) => (
+                <div key={stat.rep_name} className="flex items-center justify-between gap-4">
+                  <span className="text-[14px] font-medium text-foreground truncate">{stat.rep_name}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-28 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${(stat.count / Math.max(...repStats.map((s) => s.count))) * 100}%` }}
+                      />
                     </div>
+                    <span className="text-[13px] font-semibold text-muted-foreground tabular-nums w-6 text-right">
+                      {stat.count}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
-        {/* Proposals List */}
-        <Card className="border-0 shadow-soft">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              Recent Proposals
-            </CardTitle>
-            <CardDescription>
-              {userRole?.role === 'admin' ? 'All proposals from your dealership' : 'Your generated proposals'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Proposals list */}
+        <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              {userRole?.role === 'admin' ? 'All Proposals' : 'Your Proposals'}
+            </h2>
+            <span className="text-[13px] text-muted-foreground">{proposals.length} total</span>
+          </div>
+
+          <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
             {loading ? (
-              <div className="py-12">
+              <div className="py-16">
                 <LoadingSpinner message="Loading proposals..." />
               </div>
             ) : proposals.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-8 h-8 text-muted-foreground" />
+              <div className="text-center py-20 px-6">
+                <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-7 h-7 text-muted-foreground" />
                 </div>
-                <h3 className="font-semibold text-foreground mb-2">No proposals yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Create your first proposal to get started
+                <h3 className="font-semibold text-foreground mb-1 text-[15px]">No proposals yet</h3>
+                <p className="text-[13px] text-muted-foreground mb-5">
+                  Create your first proposal to get started.
                 </p>
-                <Button variant="water" onClick={() => navigate('/new-proposal')}>
+                <Button
+                  onClick={() => navigate('/new-proposal')}
+                  className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-[13px] font-medium"
+                >
                   <Plus className="w-4 h-4" />
                   Create Proposal
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-border">
-                {proposals.map((proposal) => (
+              <div className="divide-y divide-border/50">
+                {proposals.map((proposal, i) => (
                   <ProposalDetailCard
                     key={proposal.id}
                     proposal={proposal}
@@ -358,8 +326,8 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </main>
 
       <CreateInvoiceDialog
@@ -369,24 +337,41 @@ export default function Dashboard() {
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Proposal?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-[17px]">Delete Proposal?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[14px]">
               This will permanently delete this proposal. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl text-[13px]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="rounded-xl text-[13px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/* ── Metric Tile ── */
+function MetricTile({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: 'primary' | 'accent' }) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-5 flex items-center justify-between transition-shadow hover:shadow-soft">
+      <div>
+        <p className="text-[13px] text-muted-foreground font-medium">{label}</p>
+        <p className="text-3xl font-bold tracking-tight text-foreground mt-1 tabular-nums">{value}</p>
+      </div>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+        color === 'primary' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
+      }`}>
+        {icon}
+      </div>
     </div>
   );
 }
