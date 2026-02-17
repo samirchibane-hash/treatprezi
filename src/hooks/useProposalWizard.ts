@@ -108,22 +108,26 @@ export function useProposalWizard() {
   const canProceed = (): boolean => {
     switch (state.currentStep) {
       case 1:
-        return state.customerName.trim().length > 0;
+        return (
+          state.customerName.trim().length > 0 &&
+          state.street.trim().length > 0 &&
+          state.city.trim().length > 0 &&
+          state.state.trim().length > 0 &&
+          state.zipCode.trim().length > 0
+        );
       case 2:
-        return state.street.trim().length > 0 && state.city.trim().length > 0 && state.state.trim().length > 0 && state.zipCode.trim().length > 0;
-      case 3:
         return state.homeAge.length > 0 && state.householdSize.length > 0 && state.waterSource.length > 0;
-      case 4:
+      case 3:
         return true;
-      case 5:
+      case 4:
         return !!state.proposalId;
-      case 6:
+      case 5:
         return state.selectedProductIds.length > 0;
+      case 6:
+        return true;
       case 7:
         return true;
       case 8:
-        return true;
-      case 9:
         return true;
       default:
         return false;

@@ -1,16 +1,15 @@
-import { User, MapPin, Home, Droplets, Sparkles, ShoppingCart, Receipt, FileText, Camera, Check } from 'lucide-react';
+import { User, Home, Droplets, Sparkles, ShoppingCart, Receipt, FileText, Camera, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const STEPS = [
   { id: 1, title: 'Customer Info', icon: User },
-  { id: 2, title: 'Location', icon: MapPin },
-  { id: 3, title: 'Household', icon: Home },
-  { id: 4, title: 'Water Test', icon: Droplets },
-  { id: 5, title: 'Presentation', icon: Sparkles },
-  { id: 6, title: 'System Buildout', icon: ShoppingCart },
-  { id: 7, title: 'Generate Invoice', icon: Receipt },
-  { id: 8, title: 'Contract', icon: FileText },
-  { id: 9, title: 'Install Details', icon: Camera },
+  { id: 2, title: 'Household', icon: Home },
+  { id: 3, title: 'Water Test', icon: Droplets },
+  { id: 4, title: 'Presentation', icon: Sparkles },
+  { id: 5, title: 'System Buildout', icon: ShoppingCart },
+  { id: 6, title: 'Generate Invoice', icon: Receipt },
+  { id: 7, title: 'Contract', icon: FileText },
+  { id: 8, title: 'Install Details', icon: Camera },
 ];
 
 interface StepSidebarProps {
@@ -21,9 +20,7 @@ interface StepSidebarProps {
 
 export function StepSidebar({ currentStep, proposalId, onStepClick }: StepSidebarProps) {
   const canNavigateTo = (stepId: number) => {
-    // Steps 1-4 are always navigable once reached
-    // Steps 5+ require a saved proposal
-    if (stepId <= 4) return stepId <= currentStep;
+    if (stepId <= 3) return stepId <= currentStep;
     return !!proposalId;
   };
 

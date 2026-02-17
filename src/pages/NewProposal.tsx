@@ -15,15 +15,14 @@ import { ContractStep } from '@/components/proposal/wizard/ContractStep';
 import { InstallDetailsStep } from '@/components/proposal/wizard/InstallDetailsStep';
 
 const STEP_META: Record<number, { title: string; description: string }> = {
-  1: { title: 'Customer Information', description: "Enter the customer's contact details" },
-  2: { title: 'Service Location', description: 'Where will the system be installed?' },
-  3: { title: 'Household Details', description: 'Tell us about the home and water usage' },
-  4: { title: 'Water Test Results', description: 'Enter water quality test measurements' },
-  5: { title: 'Presentation', description: 'Save proposal and generate the presentation' },
-  6: { title: 'Choose Products', description: 'Select products/services for this customer' },
-  7: { title: 'Generate Invoice', description: 'Create a payment link for the customer' },
-  8: { title: 'Contract', description: 'Generate and manage the contract' },
-  9: { title: 'Install Details', description: 'Photos, install date, and completion details' },
+  1: { title: 'Customer Information', description: "Enter the customer's contact details and service address" },
+  2: { title: 'Household Details', description: 'Tell us about the home and water usage' },
+  3: { title: 'Water Test Results', description: 'Enter water quality test measurements' },
+  4: { title: 'Presentation', description: 'Save proposal and generate the presentation' },
+  5: { title: 'Choose Products', description: 'Select products/services for this customer' },
+  6: { title: 'Generate Invoice', description: 'Create a payment link for the customer' },
+  7: { title: 'Contract', description: 'Generate and manage the contract' },
+  8: { title: 'Install Details', description: 'Photos, install date, and completion details' },
 };
 
 export default function NewProposal() {
@@ -41,8 +40,8 @@ export default function NewProposal() {
     if (currentStep > 1) setStep(currentStep - 1);
   };
 
-  // Steps 5+ that require proposal to be saved first
-  const requiresProposal = currentStep >= 5 && !state.proposalId;
+  // Steps 4+ that require proposal to be saved first
+  const requiresProposal = currentStep >= 4 && !state.proposalId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,19 +84,26 @@ export default function NewProposal() {
                 <CardDescription>{meta.description}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {currentStep === 1 && <CustomerInfoStep state={state} update={update} />}
-                {currentStep === 2 && <LocationStep state={state} update={update} />}
-                {currentStep === 3 && <HouseholdStep state={state} update={update} />}
-                {currentStep === 4 && <WaterTestStep state={state} update={update} />}
-                {currentStep === 5 && <PresentationStep state={state} update={update} />}
-                {currentStep === 6 && (requiresProposal ? (
+                {currentStep === 1 && (
+                  <div className="space-y-6">
+                    <CustomerInfoStep state={state} update={update} />
+                    <div className="border-t pt-6">
+                      <p className="text-sm font-medium text-muted-foreground mb-4">Service Address</p>
+                      <LocationStep state={state} update={update} />
+                    </div>
+                  </div>
+                )}
+                {currentStep === 2 && <HouseholdStep state={state} update={update} />}
+                {currentStep === 3 && <WaterTestStep state={state} update={update} />}
+                {currentStep === 4 && <PresentationStep state={state} update={update} />}
+                {currentStep === 5 && (requiresProposal ? (
                   <p className="text-center py-8 text-muted-foreground">Save the proposal in the Presentation step first.</p>
                 ) : <ProductSelectionStep state={state} update={update} />)}
-                {currentStep === 7 && (requiresProposal ? (
+                {currentStep === 6 && (requiresProposal ? (
                   <p className="text-center py-8 text-muted-foreground">Save the proposal in the Presentation step first.</p>
                 ) : <InvoiceStep state={state} update={update} />)}
-                {currentStep === 8 && <ContractStep state={state} />}
-                {currentStep === 9 && <InstallDetailsStep state={state} update={update} />}
+                {currentStep === 7 && <ContractStep state={state} />}
+                {currentStep === 8 && <InstallDetailsStep state={state} update={update} />}
 
                 {/* Navigation */}
                 <div className="flex justify-between pt-6 border-t">
