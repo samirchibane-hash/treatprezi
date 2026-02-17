@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { User, Receipt, ExternalLink, Trash2, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 
 interface Proposal {
@@ -12,6 +11,7 @@ interface Proposal {
   presentation_url: string | null;
   created_at: string;
   created_by: string;
+  invoice_amount_cents?: number | null;
 }
 
 interface ProposalDetailCardProps {
@@ -21,71 +21,62 @@ interface ProposalDetailCardProps {
   isDeleting: boolean;
 }
 
+function getProposalStage(proposal: Proposal): { label: string; className: string } {
+  if (proposal.invoice_amount_cents != null) {
+    return { label: 'Invoiced', className: 'bg-green-500/10 text-green-600 dark:text-green-400' };
+  }
+  if (proposal.presentation_url) {
+    return { label: 'Presented', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' };
+  }
+  return { label: 'New', className: 'bg-secondary text-secondary-foreground' };
+}
+
 export function ProposalDetailCard({ proposal, onDelete, onCreateInvoice, isDeleting }: ProposalDetailCardProps) {
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const stage = getProposalStage(proposal);
+
+  const formattedValue = proposal.invoice_amount_cents != null
+    ? `$${(proposal.invoice_amount_cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+    : '—';
 
   return (
-    <div className="group px-5 py-4 transition-colors hover:bg-muted/30">
-      <div className="flex items-center gap-4">
-        {/* Avatar */}
-        <div className="w-9 h-9 rounded-full bg-primary/8 flex items-center justify-center flex-shrink-0">
-          <span className="text-[13px] font-semibold text-primary">
+    <div className="group grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/30">
+      {/* Full Name */}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <span className="text-[12px] font-semibold text-primary">
             {proposal.customer_name.charAt(0).toUpperCase()}
           </span>
         </div>
-
-        {/* Content — clickable */}
-        <button
-          className="flex-1 min-w-0 text-left"
-          onClick={() => navigate(`/proposal/${proposal.id}`)}
-        >
-          <div className="flex items-center gap-2">
-            <h4 className="text-[14px] font-semibold text-foreground truncate">
-              {proposal.customer_name}
-            </h4>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-          </div>
-          <p className="text-[12px] text-muted-foreground truncate mt-0.5">
-            {proposal.address}
-          </p>
-        </button>
-
-        {/* System badge */}
-        <span className="hidden md:inline-flex text-[11px] font-medium text-secondary-foreground bg-secondary px-2.5 py-1 rounded-lg flex-shrink-0">
-          {proposal.recommended_system}
+        <span className="text-[13px] font-medium text-foreground truncate">
+          {proposal.customer_name}
         </span>
-
-        {/* Date */}
-        <span className="hidden sm:block text-[12px] text-muted-foreground tabular-nums flex-shrink-0 w-20 text-right">
-          {format(new Date(proposal.created_at), 'MMM d, yyyy')}
-        </span>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          {proposal.presentation_url ? (
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => window.open(proposal.presentation_url!, '_blank')}>
-              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-            </Button>
-          ) : (
-            <span className="text-[11px] text-muted-foreground italic mr-1">Generating…</span>
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => onCreateInvoice(proposal)}>
-            <Receipt className="w-3.5 h-3.5 text-muted-foreground" />
-          </Button>
-          {proposal.created_by === user?.id && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              disabled={isDeleting}
-              onClick={() => onDelete(proposal.id)}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
       </div>
+
+      {/* Proposal Value */}
+      <span className="text-[13px] text-foreground tabular-nums">
+        {formattedValue}
+      </span>
+
+      {/* Stage */}
+      <span className={`inline-flex w-fit text-[11px] font-medium px-2.5 py-1 rounded-lg ${stage.className}`}>
+        {stage.label}
+      </span>
+
+      {/* Date Created */}
+      <span className="text-[12px] text-muted-foreground tabular-nums">
+        {format(new Date(proposal.created_at), 'MMM d, yyyy')}
+      </span>
+
+      {/* Expand button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => navigate(`/proposal/${proposal.id}`)}
+      >
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      </Button>
     </div>
   );
 }
