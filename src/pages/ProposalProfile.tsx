@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, User, Droplets, Receipt, Camera, Upload, Trash2, ExternalLink, MapPin, Home, FileText, Droplet } from 'lucide-react';
+import {
+  ArrowLeft, User, Droplets, Receipt, Camera, Upload, Trash2,
+  ExternalLink, MapPin, Home, FileText, Droplet, ChevronRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -58,6 +59,55 @@ interface Invoice {
   created_at: string;
 }
 
+// ── Section wrapper ──────────────────────────────────────────────────────────
+function Section({
+  icon: Icon,
+  title,
+  action,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+      <div className="px-6 py-4 border-b border-border/40 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl gradient-water flex items-center justify-center flex-shrink-0">
+            <Icon className="w-4 h-4 text-primary-foreground" />
+          </div>
+          <h2 className="text-[15px] font-semibold text-foreground tracking-tight">{title}</h2>
+        </div>
+        {action}
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+// ── Info row ─────────────────────────────────────────────────────────────────
+function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium mb-0.5">{label}</p>
+      <p className="text-[14px] text-foreground font-medium">{value || '—'}</p>
+    </div>
+  );
+}
+
+// ── Water metric tile ─────────────────────────────────────────────────────────
+function WaterTile({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-4 bg-muted/40 rounded-2xl gap-1">
+      <p className="text-3xl font-bold text-primary tabular-nums">{value}</p>
+      <p className="text-[11px] text-muted-foreground text-center leading-tight">{label}</p>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function ProposalProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -68,8 +118,6 @@ export default function ProposalProfile() {
   const [photos, setPhotos] = useState<InstallationPhoto[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingPhotos, setLoadingPhotos] = useState(false);
-  const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
 
@@ -99,25 +147,21 @@ export default function ProposalProfile() {
   };
 
   const fetchPhotos = async () => {
-    setLoadingPhotos(true);
     const { data } = await supabase
       .from('installation_photos')
       .select('*')
       .eq('proposal_id', id!)
       .order('created_at', { ascending: false });
     if (data) setPhotos(data);
-    setLoadingPhotos(false);
   };
 
   const fetchInvoices = async () => {
-    setLoadingInvoices(true);
     const { data } = await supabase
       .from('invoices')
       .select('id, amount_cents, status, stripe_payment_link, created_at')
       .eq('proposal_id', id!)
       .order('created_at', { ascending: false });
     if (data) setInvoices(data);
-    setLoadingInvoices(false);
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,289 +225,282 @@ export default function ProposalProfile() {
 
   if (!proposal) return null;
 
-  const hasWaterTestData = proposal.hardness !== null || proposal.iron !== null ||
+  const hasWaterTestData =
+    proposal.hardness !== null || proposal.iron !== null ||
     proposal.tds !== null || proposal.ph !== null || proposal.chlorine !== null;
-
-  const hasHouseholdData = proposal.home_age || proposal.household_size || proposal.water_source;
 
   const appliances = [
     proposal.has_dishwasher && 'Dishwasher',
     proposal.has_dryer && 'Dryer',
     proposal.has_water_heater && 'Water Heater',
     proposal.has_ice_maker && 'Ice Maker',
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-lg">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      {/* ── Navbar ── */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-xl backdrop-saturate-150">
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-              <ArrowLeft className="w-5 h-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-4 h-4" />
             </Button>
-            <div className="w-10 h-10 gradient-water rounded-xl flex items-center justify-center shadow-sm">
-              <Droplet className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 gradient-water rounded-xl flex items-center justify-center">
+              <Droplet className="w-4 h-4 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="font-bold text-foreground">{proposal.customer_name}</h1>
-              <p className="text-xs text-muted-foreground">{proposal.address}</p>
+            <div className="leading-tight">
+              <p className="text-[15px] font-semibold text-foreground tracking-tight leading-none">{proposal.customer_name}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-[200px]">{proposal.address}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {proposal.presentation_url && (
-              <Button variant="outline" size="sm" onClick={() => window.open(proposal.presentation_url!, '_blank')}>
-                <ExternalLink className="w-4 h-4" />
-                View Presentation
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-xl text-[13px] gap-1.5"
+                onClick={() => window.open(proposal.presentation_url!, '_blank')}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Presentation
               </Button>
             )}
-            <Button variant="water" size="sm" onClick={() => setInvoiceDialogOpen(true)}>
-              <Receipt className="w-4 h-4" />
+            <Button
+              variant="water"
+              size="sm"
+              className="h-8 rounded-xl text-[13px] gap-1.5"
+              onClick={() => setInvoiceDialogOpen(true)}
+            >
+              <Receipt className="w-3.5 h-3.5" />
               Invoice
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Summary cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="border-0 shadow-soft">
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground font-medium">System</p>
-              <p className="text-lg font-bold text-foreground">{proposal.recommended_system}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-soft">
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground font-medium">Created</p>
-              <p className="text-lg font-bold text-foreground">{format(new Date(proposal.created_at), 'MMM d, yyyy')}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-soft">
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground font-medium">Invoices</p>
-              <p className="text-lg font-bold text-foreground">{invoices.length}</p>
-            </CardContent>
-          </Card>
+      {/* ── Hero stat bar ── */}
+      <div className="border-b border-border/40 bg-card/60">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-6">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">System</p>
+            <p className="text-[14px] font-semibold text-foreground mt-0.5">{proposal.recommended_system}</p>
+          </div>
+          <div className="w-px h-8 bg-border/60" />
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Created</p>
+            <p className="text-[14px] font-semibold text-foreground mt-0.5">
+              {format(new Date(proposal.created_at), 'MMM d, yyyy')}
+            </p>
+          </div>
+          <div className="w-px h-8 bg-border/60" />
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Invoices</p>
+            <p className="text-[14px] font-semibold text-foreground mt-0.5">{invoices.length}</p>
+          </div>
         </div>
+      </div>
 
-        {/* Tabbed content */}
-        <Card className="border-0 shadow-soft">
-          <CardContent className="pt-6">
-            <Tabs defaultValue="customer" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="customer" className="text-xs sm:text-sm">
-                  <User className="w-4 h-4 mr-1 hidden sm:inline" />
-                  Customer
-                </TabsTrigger>
-                <TabsTrigger value="water" className="text-xs sm:text-sm">
-                  <Droplets className="w-4 h-4 mr-1 hidden sm:inline" />
-                  Water Test
-                </TabsTrigger>
-                <TabsTrigger value="contracts" className="text-xs sm:text-sm">
-                  <FileText className="w-4 h-4 mr-1 hidden sm:inline" />
-                  Contracts
-                </TabsTrigger>
-                <TabsTrigger value="invoices" className="text-xs sm:text-sm">
-                  <Receipt className="w-4 h-4 mr-1 hidden sm:inline" />
-                  Invoices
-                </TabsTrigger>
-                <TabsTrigger value="photos" className="text-xs sm:text-sm">
-                  <Camera className="w-4 h-4 mr-1 hidden sm:inline" />
-                  Photos
-                </TabsTrigger>
-              </TabsList>
+      {/* ── Stacked sections ── */}
+      <main className="max-w-3xl mx-auto px-4 py-8 space-y-5">
 
-              <TabsContent value="customer" className="mt-6 space-y-6">
-                <div className="space-y-2">
-                  <h5 className="font-medium text-sm flex items-center gap-2">
-                    <User className="w-4 h-4" /> Contact Information
-                  </h5>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Name:</span>
-                      <p className="font-medium">{proposal.customer_name}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Email:</span>
-                      <p className="font-medium">{proposal.customer_email || '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Phone:</span>
-                      <p className="font-medium">{proposal.customer_phone || '—'}</p>
-                    </div>
-                  </div>
+        {/* 1 · Customer Details */}
+        <Section icon={User} title="Customer Details">
+          <div className="space-y-5">
+            <div className="grid grid-cols-3 gap-4">
+              <InfoRow label="Name" value={proposal.customer_name} />
+              <InfoRow label="Email" value={proposal.customer_email} />
+              <InfoRow label="Phone" value={proposal.customer_phone} />
+            </div>
+
+            <div className="pt-4 border-t border-border/40">
+              <div className="flex items-center gap-1.5 mb-2">
+                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Address</p>
+              </div>
+              <p className="text-[14px] text-foreground font-medium">{proposal.address}</p>
+            </div>
+
+            {(proposal.home_age || proposal.household_size || proposal.water_source || proposal.num_bathrooms) && (
+              <div className="pt-4 border-t border-border/40">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <Home className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Household</p>
                 </div>
-
-                <div className="space-y-2">
-                  <h5 className="font-medium text-sm flex items-center gap-2">
-                    <MapPin className="w-4 h-4" /> Service Address
-                  </h5>
-                  <p className="text-sm">{proposal.address}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {proposal.home_age && <InfoRow label="Home Age" value={proposal.home_age} />}
+                  {proposal.household_size && <InfoRow label="Household Size" value={proposal.household_size} />}
+                  {proposal.water_source && <InfoRow label="Water Source" value={proposal.water_source} />}
+                  {proposal.num_bathrooms && <InfoRow label="Bathrooms" value={proposal.num_bathrooms} />}
                 </div>
-
-                {hasHouseholdData && (
-                  <div className="space-y-2">
-                    <h5 className="font-medium text-sm flex items-center gap-2">
-                      <Home className="w-4 h-4" /> Household Details
-                    </h5>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      {proposal.home_age && (
-                        <div><span className="text-muted-foreground">Home Age:</span><p className="font-medium">{proposal.home_age}</p></div>
-                      )}
-                      {proposal.household_size && (
-                        <div><span className="text-muted-foreground">Household:</span><p className="font-medium">{proposal.household_size}</p></div>
-                      )}
-                      {proposal.water_source && (
-                        <div><span className="text-muted-foreground">Water Source:</span><p className="font-medium">{proposal.water_source}</p></div>
-                      )}
-                      {proposal.num_bathrooms && (
-                        <div><span className="text-muted-foreground">Bathrooms:</span><p className="font-medium">{proposal.num_bathrooms}</p></div>
-                      )}
-                    </div>
-                    {appliances.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {appliances.map((app) => (
-                          <Badge key={app} variant="secondary">{app}</Badge>
-                        ))}
-                      </div>
-                    )}
-                    {proposal.water_concerns && (
-                      <div className="mt-2">
-                        <span className="text-muted-foreground text-sm">Concerns:</span>
-                        <p className="text-sm">{proposal.water_concerns}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="water" className="mt-6">
-                {hasWaterTestData ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                    {proposal.hardness !== null && (
-                      <div className="text-center p-3 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-primary">{proposal.hardness}</p>
-                        <p className="text-xs text-muted-foreground">Hardness (gpg)</p>
-                      </div>
-                    )}
-                    {proposal.iron !== null && (
-                      <div className="text-center p-3 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-primary">{proposal.iron}</p>
-                        <p className="text-xs text-muted-foreground">Iron (ppm)</p>
-                      </div>
-                    )}
-                    {proposal.tds !== null && (
-                      <div className="text-center p-3 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-primary">{proposal.tds}</p>
-                        <p className="text-xs text-muted-foreground">TDS (ppm)</p>
-                      </div>
-                    )}
-                    {proposal.ph !== null && (
-                      <div className="text-center p-3 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-primary">{proposal.ph}</p>
-                        <p className="text-xs text-muted-foreground">pH Level</p>
-                      </div>
-                    )}
-                    {proposal.chlorine !== null && (
-                      <div className="text-center p-3 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-primary">{proposal.chlorine}</p>
-                        <p className="text-xs text-muted-foreground">Chlorine (ppm)</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">No water test data recorded</p>
-                )}
-              </TabsContent>
-
-              <TabsContent value="contracts" className="mt-6">
-                <ContractsTab proposalId={proposal.id} customerName={proposal.customer_name} />
-              </TabsContent>
-
-              <TabsContent value="invoices" className="mt-6">
-                {loadingInvoices ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Loading invoices...</p>
-                ) : invoices.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground mb-4">No invoices created yet</p>
-                    <Button variant="outline" size="sm" onClick={() => setInvoiceDialogOpen(true)}>
-                      <Receipt className="w-4 h-4 mr-2" />
-                      Create Invoice
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {invoices.map((invoice) => (
-                      <div key={invoice.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div>
-                          <p className="font-medium">${(invoice.amount_cents / 100).toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(invoice.created_at), 'MMM d, yyyy')}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
-                            {invoice.status}
-                          </Badge>
-                          {invoice.stripe_payment_link && (
-                            <Button variant="ghost" size="sm" onClick={() => window.open(invoice.stripe_payment_link!, '_blank')}>
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
+                {appliances.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {appliances.map((app) => (
+                      <Badge key={app} variant="secondary" className="rounded-lg text-[12px]">{app}</Badge>
                     ))}
                   </div>
                 )}
-              </TabsContent>
-
-              <TabsContent value="photos" className="mt-6">
-                <div className="space-y-4">
-                  <div className="flex justify-end">
-                    <label className="cursor-pointer">
-                      <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                      <Button variant="outline" size="sm" disabled={uploading} asChild>
-                        <span>
-                          <Upload className="w-4 h-4 mr-2" />
-                          {uploading ? 'Uploading...' : 'Upload Photo'}
-                        </span>
-                      </Button>
-                    </label>
+                {proposal.water_concerns && (
+                  <div className="mt-4">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium mb-1">Water Concerns</p>
+                    <p className="text-[14px] text-foreground">{proposal.water_concerns}</p>
                   </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Section>
 
-                  {loadingPhotos ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">Loading photos...</p>
-                  ) : photos.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">No installation photos yet</p>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {photos.map((photo) => (
-                        <div key={photo.id} className="relative group">
-                          <img
-                            src={getPhotoUrl(photo.file_path)}
-                            alt={photo.file_name}
-                            className="w-full aspect-square object-cover rounded-lg"
-                          />
-                          {photo.uploaded_by === user?.id && (
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                              onClick={() => handleDeletePhoto(photo)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+        {/* 2 · Water Test */}
+        <Section icon={Droplets} title="Water Test">
+          {hasWaterTestData ? (
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+              {proposal.hardness !== null && <WaterTile value={proposal.hardness} label="Hardness (gpg)" />}
+              {proposal.iron !== null && <WaterTile value={proposal.iron} label="Iron (ppm)" />}
+              {proposal.tds !== null && <WaterTile value={proposal.tds} label="TDS (ppm)" />}
+              {proposal.ph !== null && <WaterTile value={proposal.ph} label="pH Level" />}
+              {proposal.chlorine !== null && <WaterTile value={proposal.chlorine} label="Chlorine (ppm)" />}
+            </div>
+          ) : (
+            <div className="py-6 text-center">
+              <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                <Droplets className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-[13px] text-muted-foreground">No water test data recorded</p>
+            </div>
+          )}
+        </Section>
+
+        {/* 3 · Contracts */}
+        <Section icon={FileText} title="Contracts">
+          <ContractsTab proposalId={proposal.id} customerName={proposal.customer_name} />
+        </Section>
+
+        {/* 4 · Invoices */}
+        <Section
+          icon={Receipt}
+          title="Invoices"
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 rounded-xl text-[12px] gap-1.5"
+              onClick={() => setInvoiceDialogOpen(true)}
+            >
+              <Receipt className="w-3 h-3" />
+              New Invoice
+            </Button>
+          }
+        >
+          {invoices.length === 0 ? (
+            <div className="py-6 text-center">
+              <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                <Receipt className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-[13px] text-muted-foreground mb-3">No invoices created yet</p>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setInvoiceDialogOpen(true)}>
+                Create First Invoice
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {invoices.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="flex items-center justify-between p-3.5 bg-muted/40 rounded-xl"
+                >
+                  <div>
+                    <p className="text-[15px] font-semibold text-foreground tabular-nums">
+                      ${(invoice.amount_cents / 100).toFixed(2)}
+                    </p>
+                    <p className="text-[12px] text-muted-foreground mt-0.5">
+                      {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={invoice.status === 'paid' ? 'default' : 'secondary'}
+                      className="rounded-lg capitalize text-[12px]"
+                    >
+                      {invoice.status}
+                    </Badge>
+                    {invoice.stripe_payment_link && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-xl"
+                        onClick={() => window.open(invoice.stripe_payment_link!, '_blank')}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* 5 · Installation & Photos */}
+        <Section
+          icon={Camera}
+          title="Installation & Photos"
+          action={
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+                disabled={uploading}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-xl text-[12px] gap-1.5 pointer-events-none"
+                disabled={uploading}
+                asChild
+              >
+                <span>
+                  <Upload className="w-3 h-3" />
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </span>
+              </Button>
+            </label>
+          }
+        >
+          {photos.length === 0 ? (
+            <div className="py-6 text-center">
+              <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                <Camera className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-[13px] text-muted-foreground">No installation photos yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {photos.map((photo) => (
+                <div key={photo.id} className="relative group rounded-xl overflow-hidden aspect-square">
+                  <img
+                    src={getPhotoUrl(photo.file_path)}
+                    alt={photo.file_name}
+                    className="w-full h-full object-cover"
+                  />
+                  {photo.uploaded_by === user?.id && (
+                    <button
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      onClick={() => handleDeletePhoto(photo)}
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-destructive flex items-center justify-center">
+                        <Trash2 className="w-4 h-4 text-destructive-foreground" />
+                      </div>
+                    </button>
                   )}
                 </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+              ))}
+            </div>
+          )}
+        </Section>
+
       </main>
 
       <CreateInvoiceDialog
