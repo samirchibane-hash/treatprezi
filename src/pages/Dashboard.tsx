@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Droplet, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, FileText, Droplet, LogOut, Settings as SettingsIcon, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +57,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [proposalInvoices, setProposalInvoices] = useState<Record<string, number>>({});
   const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [revenueThisMonth, setRevenueThisMonth] = useState(0);
@@ -65,6 +67,7 @@ export default function Dashboard() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [proposalToDelete, setProposalToDelete] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -79,6 +82,7 @@ export default function Dashboard() {
       fetchProposals();
       fetchRevenueAndLeaderboard();
       fetchAnnouncements();
+      fetchProposalInvoices();
     }
   }, [profile, userRole]);
 
@@ -93,6 +97,24 @@ export default function Dashboard() {
       setProposals(data);
     }
     setLoading(false);
+  };
+
+  const fetchProposalInvoices = async () => {
+    const { data } = await supabase
+      .from('invoices')
+      .select('proposal_id, amount_cents')
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      // Keep the latest invoice per proposal
+      const map: Record<string, number> = {};
+      data.forEach((inv) => {
+        if (!(inv.proposal_id in map)) {
+          map[inv.proposal_id] = inv.amount_cents;
+        }
+      });
+      setProposalInvoices(map);
+    }
   };
 
   const fetchRevenueAndLeaderboard = async () => {
@@ -253,16 +275,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* New Proposal CTA */}
-        <div className="mb-8">
-          <Button
-            onClick={() => navigate('/new-proposal')}
-            className="h-11 px-6 rounded-xl bg-primary text-primary-foreground font-medium text-[14px] shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            New Proposal
-          </Button>
-        </div>
+
 
         {/* 3-column insight cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 animate-fade-in">
@@ -283,11 +296,29 @@ export default function Dashboard() {
 
         {/* Proposals list */}
         <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+          {/* Section header */}
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground flex-shrink-0">
               {userRole?.role === 'admin' ? 'All Proposals' : 'Your Proposals'}
             </h2>
-            <span className="text-[13px] text-muted-foreground">{proposals.length} total</span>
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <div className="relative max-w-xs w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search contacts…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-9 pl-8 pr-3 rounded-xl text-[13px] bg-muted/50 border-border/50 focus-visible:ring-1"
+                />
+              </div>
+              <Button
+                onClick={() => navigate('/new-proposal')}
+                className="h-9 px-4 rounded-xl text-[13px] font-medium flex-shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New Proposal
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
@@ -306,24 +337,45 @@ export default function Dashboard() {
                 </p>
                 <Button
                   onClick={() => navigate('/new-proposal')}
-                  className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-[13px] font-medium"
+                  className="h-10 px-5 rounded-xl text-[13px] font-medium"
                 >
                   <Plus className="w-4 h-4" />
                   Create Proposal
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-border/50">
-                {proposals.map((proposal) => (
-                  <ProposalDetailCard
-                    key={proposal.id}
-                    proposal={proposal}
-                    onDelete={handleDeleteProposal}
-                    onCreateInvoice={handleCreateInvoice}
-                    isDeleting={deletingId === proposal.id}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Column headers */}
+                <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 px-5 py-2.5 border-b border-border/50 bg-muted/30">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Full Name</span>
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Proposal Value</span>
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Stage</span>
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Date Created</span>
+                  <span className="w-8" />
+                </div>
+                <div className="divide-y divide-border/50">
+                  {proposals
+                    .filter((p) =>
+                      !search || p.customer_name.toLowerCase().includes(search.toLowerCase())
+                    )
+                    .map((proposal) => (
+                      <ProposalDetailCard
+                        key={proposal.id}
+                        proposal={{ ...proposal, invoice_amount_cents: proposalInvoices[proposal.id] ?? null }}
+                        onDelete={handleDeleteProposal}
+                        onCreateInvoice={handleCreateInvoice}
+                        isDeleting={deletingId === proposal.id}
+                      />
+                    ))}
+                  {proposals.filter((p) =>
+                    !search || p.customer_name.toLowerCase().includes(search.toLowerCase())
+                  ).length === 0 && (
+                    <div className="text-center py-10 text-[13px] text-muted-foreground">
+                      No contacts match "{search}"
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </section>
