@@ -4,6 +4,13 @@ import {
   ArrowLeft, User, Droplets, Receipt, Camera, Upload, Trash2,
   ExternalLink, MapPin, Home, FileText, Droplet, ShoppingCart, Check, Image,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +48,7 @@ interface Proposal {
   tds: number | null;
   ph: number | null;
   chlorine: number | null;
+  stage: string;
 }
 
 interface InstallationPhoto {
@@ -131,6 +139,32 @@ export default function ProposalProfile() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [stageSaving, setStageSaving] = useState(false);
+
+  const STAGES = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'presented', label: 'Presented' },
+    { value: 'follow_up', label: 'Follow Up' },
+    { value: 'not_qualified', label: 'Not Qualified' },
+    { value: 'not_interested', label: 'Not Interested' },
+    { value: 'closed', label: 'Closed' },
+  ];
+
+  const updateStage = async (newStage: string) => {
+    if (!proposal) return;
+    setStageSaving(true);
+    const { error } = await supabase
+      .from('proposals')
+      .update({ stage: newStage })
+      .eq('id', proposal.id);
+    if (!error) {
+      setProposal((prev) => prev ? { ...prev, stage: newStage } : prev);
+      toast({ title: 'Stage updated' });
+    } else {
+      toast({ title: 'Error', description: 'Could not update stage.', variant: 'destructive' });
+    }
+    setStageSaving(false);
+  };
 
   useEffect(() => {
     if (id) {
@@ -292,12 +326,8 @@ export default function ProposalProfile() {
 
       {/* ── Hero stat bar ── */}
       <div className="border-b border-border/40 bg-card/60">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-6">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">System</p>
-            <p className="text-[14px] font-semibold text-foreground mt-0.5">{proposal.recommended_system}</p>
-          </div>
-          <div className="w-px h-8 bg-border/60" />
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-6 flex-wrap">
+          {/* Created */}
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Created</p>
             <p className="text-[14px] font-semibold text-foreground mt-0.5">
@@ -305,9 +335,35 @@ export default function ProposalProfile() {
             </p>
           </div>
           <div className="w-px h-8 bg-border/60" />
+          {/* Deal Value */}
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Invoices</p>
-            <p className="text-[14px] font-semibold text-foreground mt-0.5">{invoices.length}</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Deal Value</p>
+            <p className="text-[14px] font-semibold text-foreground mt-0.5">
+              {invoices.length > 0
+                ? `$${(invoices.reduce((s, i) => s + i.amount_cents, 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`
+                : '—'}
+            </p>
+          </div>
+          <div className="w-px h-8 bg-border/60" />
+          {/* Stage */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium mb-1">Stage</p>
+            <Select
+              value={proposal.stage || 'draft'}
+              onValueChange={updateStage}
+              disabled={stageSaving}
+            >
+              <SelectTrigger className="h-7 text-[13px] font-semibold border-none bg-transparent px-0 shadow-none focus:ring-0 w-auto gap-1.5 text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STAGES.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-[13px]">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

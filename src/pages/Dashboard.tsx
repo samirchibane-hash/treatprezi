@@ -50,6 +50,7 @@ interface Proposal {
   tds: number | null;
   ph: number | null;
   chlorine: number | null;
+  stage: string;
 }
 
 export default function Dashboard() {

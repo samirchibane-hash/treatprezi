@@ -464,6 +464,7 @@ export type Database = {
           ph: number | null
           presentation_url: string | null
           recommended_system: string
+          stage: string
           tds: number | null
           water_concerns: string | null
           water_source: string | null
@@ -493,6 +494,7 @@ export type Database = {
           ph?: number | null
           presentation_url?: string | null
           recommended_system: string
+          stage?: string
           tds?: number | null
           water_concerns?: string | null
           water_source?: string | null
@@ -522,6 +524,7 @@ export type Database = {
           ph?: number | null
           presentation_url?: string | null
           recommended_system?: string
+          stage?: string
           tds?: number | null
           water_concerns?: string | null
           water_source?: string | null
