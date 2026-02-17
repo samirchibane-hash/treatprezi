@@ -11,6 +11,7 @@ interface Proposal {
   presentation_url: string | null;
   created_at: string;
   created_by: string;
+  stage?: string;
   invoice_amount_cents?: number | null;
 }
 
@@ -21,19 +22,18 @@ interface ProposalDetailCardProps {
   isDeleting: boolean;
 }
 
-function getProposalStage(proposal: Proposal): { label: string; className: string } {
-  if (proposal.invoice_amount_cents != null) {
-    return { label: 'Invoiced', className: 'bg-green-500/10 text-green-600 dark:text-green-400' };
-  }
-  if (proposal.presentation_url) {
-    return { label: 'Presented', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' };
-  }
-  return { label: 'New', className: 'bg-secondary text-secondary-foreground' };
-}
+const STAGE_LABELS: Record<string, { label: string; className: string }> = {
+  draft:           { label: 'Draft',         className: 'bg-secondary text-secondary-foreground' },
+  presented:       { label: 'Presented',     className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  follow_up:       { label: 'Follow Up',     className: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
+  not_qualified:   { label: 'Not Qualified', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+  not_interested:  { label: 'Not Interested','className': 'bg-red-500/10 text-red-600 dark:text-red-400' },
+  closed:          { label: 'Closed',        className: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+};
 
 export function ProposalDetailCard({ proposal, onDelete, onCreateInvoice, isDeleting }: ProposalDetailCardProps) {
   const navigate = useNavigate();
-  const stage = getProposalStage(proposal);
+  const stage = STAGE_LABELS[proposal.stage ?? 'draft'] ?? STAGE_LABELS['draft'];
 
   const formattedValue = proposal.invoice_amount_cents != null
     ? `$${(proposal.invoice_amount_cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
