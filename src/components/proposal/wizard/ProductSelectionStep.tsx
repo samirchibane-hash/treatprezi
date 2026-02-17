@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Loader2, Image, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { WizardState } from '@/hooks/useProposalWizard';
 
@@ -23,6 +24,7 @@ export function ProductSelectionStep({ state, update }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { profile } = useAuth();
 
   useEffect(() => {
     fetchProducts();
@@ -42,11 +44,34 @@ export function ProductSelectionStep({ state, update }: Props) {
   const formatPrice = (cents: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 
-  const handleToggle = (productId: string) => {
+  const syncProductSelection = async (newIds: string[]) => {
+    if (!state.proposalId || !profile?.dealership_id) return;
+
+    // Replace all proposal_products for this proposal
+    await supabase
+      .from('proposal_products' as any)
+      .delete()
+      .eq('proposal_id', state.proposalId);
+
+    if (newIds.length > 0) {
+      await supabase
+        .from('proposal_products' as any)
+        .insert(
+          newIds.map((productId) => ({
+            proposal_id: state.proposalId,
+            product_id: productId,
+            dealership_id: profile.dealership_id,
+          }))
+        );
+    }
+  };
+
+  const handleToggle = async (productId: string) => {
     const ids = state.selectedProductIds.includes(productId)
       ? state.selectedProductIds.filter((id) => id !== productId)
       : [...state.selectedProductIds, productId];
     update({ selectedProductIds: ids });
+    await syncProductSelection(ids);
   };
 
   const totalAmount = products

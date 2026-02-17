@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, User, Droplets, Receipt, Camera, Upload, Trash2,
-  ExternalLink, MapPin, Home, FileText, Droplet, ChevronRight,
+  ExternalLink, MapPin, Home, FileText, Droplet, ShoppingCart, Check, Image,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +57,16 @@ interface Invoice {
   status: string;
   stripe_payment_link: string | null;
   created_at: string;
+}
+
+interface ProposalProduct {
+  product_id: string;
+  products: {
+    name: string;
+    description: string | null;
+    price_cents: number;
+    image_url: string | null;
+  };
 }
 
 // ── Section wrapper ──────────────────────────────────────────────────────────
@@ -117,6 +127,7 @@ export default function ProposalProfile() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [photos, setPhotos] = useState<InstallationPhoto[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [proposalProducts, setProposalProducts] = useState<ProposalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
@@ -126,6 +137,7 @@ export default function ProposalProfile() {
       fetchProposal();
       fetchPhotos();
       fetchInvoices();
+      fetchProposalProducts();
     }
   }, [id]);
 
@@ -162,6 +174,14 @@ export default function ProposalProfile() {
       .eq('proposal_id', id!)
       .order('created_at', { ascending: false });
     if (data) setInvoices(data);
+  };
+
+  const fetchProposalProducts = async () => {
+    const { data } = await supabase
+      .from('proposal_products' as any)
+      .select('product_id, products(name, description, price_cents, image_url)')
+      .eq('proposal_id', id!);
+    if (data) setProposalProducts(data as unknown as ProposalProduct[]);
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -371,12 +391,63 @@ export default function ProposalProfile() {
           )}
         </Section>
 
-        {/* 3 · Contracts */}
+        {/* 3 · System Buildout */}
+        <Section icon={ShoppingCart} title="System Buildout">
+          {proposalProducts.length === 0 ? (
+            <div className="py-6 text-center">
+              <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                <ShoppingCart className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-[13px] text-muted-foreground">No products selected yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {proposalProducts.map((pp) => {
+                const p = pp.products;
+                return (
+                  <div key={pp.product_id} className="flex items-center gap-4 p-3.5 bg-muted/40 rounded-xl">
+                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Image className="w-5 h-5 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-semibold text-foreground truncate">{p.name}</p>
+                      {p.description && (
+                        <p className="text-[12px] text-muted-foreground truncate mt-0.5">{p.description}</p>
+                      )}
+                    </div>
+                    <p className="text-[14px] font-bold text-primary whitespace-nowrap">
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price_cents / 100)}
+                    </p>
+                  </div>
+                );
+              })}
+              <div className="flex justify-between items-center pt-2 border-t border-border/40">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-[13px] text-muted-foreground">
+                    {proposalProducts.length} product{proposalProducts.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <p className="text-[16px] font-bold text-primary">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+                    proposalProducts.reduce((sum, pp) => sum + pp.products.price_cents, 0) / 100
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* 4 · Contracts */}
         <Section icon={FileText} title="Contracts">
           <ContractsTab proposalId={proposal.id} customerName={proposal.customer_name} />
         </Section>
 
-        {/* 4 · Invoices */}
+        {/* 5 · Invoices */}
         <Section
           icon={Receipt}
           title="Invoices"
@@ -441,7 +512,7 @@ export default function ProposalProfile() {
           )}
         </Section>
 
-        {/* 5 · Installation & Photos */}
+        {/* 6 · Installation & Photos */}
         <Section
           icon={Camera}
           title="Installation & Photos"
