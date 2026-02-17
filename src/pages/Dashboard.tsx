@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Users, TrendingUp, Droplet, LogOut, Settings as SettingsIcon, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Droplet, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
 import { ProposalDetailCard } from '@/components/proposal/ProposalDetailCard';
+import { OverviewCard } from '@/components/dashboard/OverviewCard';
+import { LeaderboardCard, type LeaderEntry } from '@/components/dashboard/LeaderboardCard';
+import { UpdatesCard, type Announcement } from '@/components/dashboard/UpdatesCard';
 
 interface Proposal {
   id: string;
@@ -48,17 +51,14 @@ interface Proposal {
   chlorine: number | null;
 }
 
-interface RepStats {
-  rep_name: string;
-  count: number;
-}
-
 export default function Dashboard() {
   const { user, profile, userRole, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [repStats, setRepStats] = useState<RepStats[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [revenueThisMonth, setRevenueThisMonth] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
@@ -77,9 +77,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (profile?.dealership_id) {
       fetchProposals();
-      if (userRole?.role === 'admin') {
-        fetchRepStats();
-      }
+      fetchRevenueAndLeaderboard();
+      fetchAnnouncements();
     }
   }, [profile, userRole]);
 
@@ -96,37 +95,71 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  const fetchRepStats = async () => {
-    const { data: proposalsData } = await supabase
-      .from('proposals')
-      .select('created_by');
+  const fetchRevenueAndLeaderboard = async () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-    if (proposalsData) {
-      const userIds = [...new Set(proposalsData.map((p) => p.created_by))];
-      
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name')
-        .in('user_id', userIds);
+    // Fetch paid invoices this month
+    const { data: invoicesData } = await supabase
+      .from('invoices')
+      .select('amount_cents, created_by, status')
+      .gte('created_at', startOfMonth)
+      .lte('created_at', endOfMonth);
 
-      if (profilesData) {
-        const stats: { [key: string]: { name: string; count: number } } = {};
-        
-        proposalsData.forEach((proposal) => {
-          const prof = profilesData.find((p) => p.user_id === proposal.created_by);
-          const name = prof?.full_name || 'Unknown';
-          if (!stats[proposal.created_by]) {
-            stats[proposal.created_by] = { name, count: 0 };
-          }
-          stats[proposal.created_by].count++;
-        });
+    if (!invoicesData) return;
 
-        setRepStats(
-          Object.values(stats)
-            .map((s) => ({ rep_name: s.name, count: s.count }))
-            .sort((a, b) => b.count - a.count)
-        );
-      }
+    // Total revenue (paid invoices only)
+    const totalRevenue = invoicesData
+      .filter((inv) => inv.status === 'paid')
+      .reduce((sum, inv) => sum + inv.amount_cents, 0);
+    setRevenueThisMonth(totalRevenue);
+
+    // Group revenue by rep
+    const repRevenue: { [userId: string]: number } = {};
+    invoicesData
+      .filter((inv) => inv.status === 'paid')
+      .forEach((inv) => {
+        repRevenue[inv.created_by] = (repRevenue[inv.created_by] || 0) + inv.amount_cents;
+      });
+
+    const userIds = Object.keys(repRevenue);
+    if (userIds.length === 0) {
+      setLeaderboard([]);
+      return;
+    }
+
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('user_id, full_name')
+      .in('user_id', userIds);
+
+    if (profilesData) {
+      const entries: LeaderEntry[] = userIds
+        .map((uid) => {
+          const prof = profilesData.find((p) => p.user_id === uid);
+          // Also count proposals for this rep this month
+          return {
+            rep_name: prof?.full_name || 'Unknown',
+            revenue_cents: repRevenue[uid],
+            proposal_count: 0,
+          };
+        })
+        .sort((a, b) => b.revenue_cents - a.revenue_cents)
+        .slice(0, 5);
+      setLeaderboard(entries);
+    }
+  };
+
+  const fetchAnnouncements = async () => {
+    const { data } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (data) {
+      setAnnouncements(data as Announcement[]);
     }
   };
 
@@ -155,10 +188,7 @@ export default function Dashboard() {
         variant: 'destructive',
       });
     } else {
-      toast({
-        title: 'Deleted',
-        description: 'Proposal has been deleted.',
-      });
+      toast({ title: 'Deleted', description: 'Proposal has been deleted.' });
       setProposals((prev) => prev.filter((p) => p.id !== proposalToDelete));
     }
     setDeletingId(null);
@@ -213,41 +243,18 @@ export default function Dashboard() {
 
       <main className="max-w-6xl mx-auto px-6 py-10">
         {/* Greeting */}
-        <div className="mb-10">
+        <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {profile.full_name?.split(' ')[0]}
+            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'},{' '}
+            {profile.full_name?.split(' ')[0]}
           </h1>
           <p className="text-[15px] text-muted-foreground mt-1">
             Here's what's happening with your proposals.
           </p>
         </div>
 
-        {/* Metric tiles — Apple widget style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-          <MetricTile
-            label="Total Proposals"
-            value={proposals.length}
-            icon={<FileText className="w-5 h-5" />}
-            color="primary"
-          />
-          {userRole?.role === 'admin' && (
-            <MetricTile
-              label="Team Members"
-              value={repStats.length}
-              icon={<Users className="w-5 h-5" />}
-              color="accent"
-            />
-          )}
-          <MetricTile
-            label="This Month"
-            value={thisMonthCount}
-            icon={<TrendingUp className="w-5 h-5" />}
-            color="accent"
-          />
-        </div>
-
         {/* New Proposal CTA */}
-        <div className="mb-10">
+        <div className="mb-8">
           <Button
             onClick={() => navigate('/new-proposal')}
             className="h-11 px-6 rounded-xl bg-primary text-primary-foreground font-medium text-[14px] shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all"
@@ -257,30 +264,22 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        {/* Admin: Team Performance */}
-        {userRole?.role === 'admin' && repStats.length > 0 && (
-          <section className="mb-10 animate-fade-in">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground mb-4">Team Performance</h2>
-            <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4">
-              {repStats.map((stat) => (
-                <div key={stat.rep_name} className="flex items-center justify-between gap-4">
-                  <span className="text-[14px] font-medium text-foreground truncate">{stat.rep_name}</span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-28 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-                        style={{ width: `${(stat.count / Math.max(...repStats.map((s) => s.count))) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-[13px] font-semibold text-muted-foreground tabular-nums w-6 text-right">
-                      {stat.count}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* 3-column insight cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 animate-fade-in">
+          <OverviewCard
+            proposalsThisMonth={thisMonthCount}
+            revenueThisMonth={revenueThisMonth}
+          />
+          <LeaderboardCard entries={leaderboard} />
+          <UpdatesCard
+            announcements={announcements}
+            isAdmin={userRole?.role === 'admin'}
+            dealershipId={profile.dealership_id}
+            userId={user!.id}
+            onAnnouncementAdded={(a) => setAnnouncements((prev) => [a, ...prev])}
+            onAnnouncementDeleted={(id) => setAnnouncements((prev) => prev.filter((a) => a.id !== id))}
+          />
+        </div>
 
         {/* Proposals list */}
         <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
@@ -315,7 +314,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="divide-y divide-border/50">
-                {proposals.map((proposal, i) => (
+                {proposals.map((proposal) => (
                   <ProposalDetailCard
                     key={proposal.id}
                     proposal={proposal}
@@ -355,23 +354,6 @@ export default function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-/* ── Metric Tile ── */
-function MetricTile({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: 'primary' | 'accent' }) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 flex items-center justify-between transition-shadow hover:shadow-soft">
-      <div>
-        <p className="text-[13px] text-muted-foreground font-medium">{label}</p>
-        <p className="text-3xl font-bold tracking-tight text-foreground mt-1 tabular-nums">{value}</p>
-      </div>
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-        color === 'primary' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
-      }`}>
-        {icon}
-      </div>
     </div>
   );
 }
