@@ -286,15 +286,6 @@ export default function ProposalProfile() {
                 Presentation
               </Button>
             )}
-            <Button
-              variant="water"
-              size="sm"
-              className="h-8 rounded-xl text-[13px] gap-1.5"
-              onClick={() => setInvoiceDialogOpen(true)}
-            >
-              <Receipt className="w-3.5 h-3.5" />
-              Invoice
-            </Button>
           </div>
         </div>
       </header>
