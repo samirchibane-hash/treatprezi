@@ -75,13 +75,13 @@ export function UpdatesCard({
     <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
       {/* Header */}
       <div className="px-5 pt-5 pb-4 border-b border-border/40 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg gradient-water flex items-center justify-center">
-            <Bell className="w-3.5 h-3.5 text-primary-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+            <Bell className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-foreground tracking-tight">Updates</p>
-            <p className="text-[11px] text-muted-foreground">From your team</p>
+            <p className="text-[15px] font-bold text-foreground tracking-tight">Updates</p>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">From your team</p>
           </div>
         </div>
         {isAdmin && !composing && (

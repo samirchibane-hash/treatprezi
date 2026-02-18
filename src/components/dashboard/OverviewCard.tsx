@@ -18,13 +18,13 @@ export function OverviewCard({ proposalsThisMonth, revenueThisMonth }: OverviewC
     <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
       {/* Header */}
       <div className="px-5 pt-5 pb-4 border-b border-border/40">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg gradient-water flex items-center justify-center">
-            <TrendingUp className="w-3.5 h-3.5 text-primary-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-foreground tracking-tight">Overview</p>
-            <p className="text-[11px] text-muted-foreground">This month</p>
+            <p className="text-[15px] font-bold text-foreground tracking-tight">Overview</p>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">This month</p>
           </div>
         </div>
       </div>
@@ -34,12 +34,12 @@ export function OverviewCard({ proposalsThisMonth, revenueThisMonth }: OverviewC
         {/* Revenue */}
         <div className="px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-accent" />
+            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-secondary-foreground" />
             </div>
             <div>
-              <p className="text-[12px] text-muted-foreground font-medium">Revenue Generated</p>
-              <p className="text-[11px] text-muted-foreground/70">From paid invoices</p>
+              <p className="text-[13px] font-semibold text-primary">Revenue Generated</p>
+              <p className="text-[11px] text-muted-foreground">From paid invoices</p>
             </div>
           </div>
           <p className="text-2xl font-bold tabular-nums text-foreground tracking-tight">
@@ -50,12 +50,12 @@ export function OverviewCard({ proposalsThisMonth, revenueThisMonth }: OverviewC
         {/* Proposals */}
         <div className="px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-              <FileText className="w-4 h-4 text-primary" />
+            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+              <FileText className="w-4 h-4 text-secondary-foreground" />
             </div>
             <div>
-              <p className="text-[12px] text-muted-foreground font-medium">Proposals Created</p>
-              <p className="text-[11px] text-muted-foreground/70">New this month</p>
+              <p className="text-[13px] font-semibold text-primary">Proposals Created</p>
+              <p className="text-[11px] text-muted-foreground">New this month</p>
             </div>
           </div>
           <p className="text-2xl font-bold tabular-nums text-foreground tracking-tight">
