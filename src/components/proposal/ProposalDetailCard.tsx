@@ -23,12 +23,12 @@ interface ProposalDetailCardProps {
 }
 
 const STAGE_LABELS: Record<string, { label: string; className: string }> = {
-  draft:           { label: 'Draft',         className: 'bg-secondary text-secondary-foreground' },
-  presented:       { label: 'Presented',     className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  follow_up:       { label: 'Follow Up',     className: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
-  not_qualified:   { label: 'Not Qualified', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-  not_interested:  { label: 'Not Interested','className': 'bg-red-500/10 text-red-600 dark:text-red-400' },
-  closed:          { label: 'Closed',        className: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  draft:           { label: 'Draft',          className: 'bg-muted text-muted-foreground border border-border' },
+  presented:       { label: 'Presented',      className: 'bg-amber-50 text-amber-700 border border-amber-100' },
+  follow_up:       { label: 'Follow Up',      className: 'bg-primary/10 text-primary border border-primary/20' },
+  not_qualified:   { label: 'Not Qualified',  className: 'bg-muted text-muted-foreground border border-border' },
+  not_interested:  { label: 'Not Interested', className: 'bg-red-50 text-red-700 border border-red-100' },
+  closed:          { label: 'Closed',         className: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
 };
 
 export function ProposalDetailCard({ proposal, onDelete, onCreateInvoice, isDeleting }: ProposalDetailCardProps) {
