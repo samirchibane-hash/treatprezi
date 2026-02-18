@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Droplet, LogOut, Settings as SettingsIcon, Search } from 'lucide-react';
+import { Plus, FileText, Droplet, LogOut, Settings as SettingsIcon, Search, Filter, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -240,24 +240,26 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Apple-style frosted navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-xl backdrop-saturate-150">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-card">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 gradient-water rounded-lg flex items-center justify-center">
-              <Droplet className="w-4 h-4 text-primary-foreground" />
+            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
+              <Droplet className="w-4.5 h-4.5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-[15px] tracking-tight text-foreground">TreatEngine</span>
+            <span className="font-bold text-[17px] tracking-tight text-foreground">TreatEngine</span>
           </div>
 
-          <div className="flex items-center gap-1">
-            <span className="text-[13px] text-muted-foreground hidden sm:block mr-2">
-              {profile.full_name}
-            </span>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigate('/settings')}>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-[13px] font-semibold text-foreground leading-tight">{profile.full_name}</span>
+              <span className="text-[11px] text-muted-foreground capitalize">{userRole?.role ?? 'Rep'}</span>
+            </div>
+            <div className="w-px h-8 bg-border/60 hidden sm:block" />
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => navigate('/settings')}>
               <SettingsIcon className="w-4 h-4 text-muted-foreground" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleSignOut}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 text-muted-foreground" />
             </Button>
           </div>
@@ -266,14 +268,22 @@ export default function Dashboard() {
 
       <main className="max-w-6xl mx-auto px-6 py-10">
         {/* Greeting */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'},{' '}
-            {profile.full_name?.split(' ')[0]}
-          </h1>
-          <p className="text-[15px] text-muted-foreground mt-1">
-            Here's what's happening with your proposals.
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">
+              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'},{' '}
+              {profile.full_name?.split(' ')[0]}
+            </h1>
+            <p className="text-[15px] text-muted-foreground mt-1">
+              Here's what's happening with your proposals.
+            </p>
+          </div>
+          <div className="hidden sm:flex flex-col items-end">
+            <span className="text-[13px] font-semibold text-primary">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </span>
+            <span className="text-[12px] text-muted-foreground">Last updated: Just now</span>
+          </div>
         </div>
 
 
@@ -298,23 +308,32 @@ export default function Dashboard() {
         {/* Proposals list */}
         <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
           {/* Section header */}
-          <div className="flex items-center justify-between mb-4 gap-3">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground flex-shrink-0">
-              {userRole?.role === 'admin' ? 'All Proposals' : 'Your Proposals'}
-            </h2>
-            <div className="flex items-center gap-2 flex-1 justify-end">
-              <div className="relative max-w-xs w-full">
+          <div className="flex items-end justify-between mb-4 gap-3">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-primary">
+                {userRole?.role === 'admin' ? 'All Proposals' : 'Your Proposals'}
+              </h2>
+              <p className="text-[13px] text-muted-foreground mt-0.5">Manage and track your client proposals</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                 <Input
-                  placeholder="Search contacts…"
+                  placeholder="Search contacts..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-9 pl-8 pr-3 rounded-xl text-[13px] bg-muted/50 border-border/50 focus-visible:ring-1"
+                  className="h-9 pl-9 pr-3 w-52 rounded-xl text-[13px] bg-card border-border/60 focus-visible:ring-1"
                 />
               </div>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/60 bg-card">
+                <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/60 bg-card">
+                <Download className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
               <Button
                 onClick={() => navigate('/new-proposal')}
-                className="h-9 px-4 rounded-xl text-[13px] font-medium flex-shrink-0"
+                className="h-9 px-4 rounded-xl text-[13px] font-semibold flex-shrink-0 bg-primary hover:bg-primary/90"
               >
                 <Plus className="w-3.5 h-3.5" />
                 New Proposal
@@ -347,11 +366,11 @@ export default function Dashboard() {
             ) : (
               <>
                 {/* Column headers */}
-                <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 px-5 py-2.5 border-b border-border/50 bg-muted/30">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Full Name</span>
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Proposal Value</span>
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Stage</span>
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Date Created</span>
+                <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 px-5 py-3 border-b border-border/50 bg-card">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Full Name</span>
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Proposal Value</span>
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Stage</span>
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Date Created</span>
                   <span className="w-8" />
                 </div>
                 <div className="divide-y divide-border/50">

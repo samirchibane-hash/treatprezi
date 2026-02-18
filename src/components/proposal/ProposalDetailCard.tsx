@@ -40,15 +40,15 @@ export function ProposalDetailCard({ proposal, onDelete, onCreateInvoice, isDele
     : '—';
 
   return (
-    <div className="group grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/30">
+    <div className="group grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/30">
       {/* Full Name */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-[12px] font-semibold text-primary">
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <span className="text-[13px] font-bold text-primary">
             {proposal.customer_name.charAt(0).toUpperCase()}
           </span>
         </div>
-        <span className="text-[13px] font-medium text-foreground truncate">
+        <span className="text-[13px] font-semibold text-primary truncate">
           {proposal.customer_name}
         </span>
       </div>
