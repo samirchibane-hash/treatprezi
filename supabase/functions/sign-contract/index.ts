@@ -220,6 +220,12 @@ serve(async (req) => {
       });
     }
 
+    // Mark the proposal as closed
+    await serviceClient
+      .from('proposals')
+      .update({ stage: 'closed' })
+      .eq('id', contract.proposal_id);
+
     console.log('Contract signed:', contract.id, 'by', signerName.trim());
 
     return new Response(JSON.stringify({

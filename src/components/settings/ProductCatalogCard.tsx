@@ -76,6 +76,7 @@ export function ProductCatalogCard() {
   };
 
   const formatPrice = (cents: number) => {
+    if (cents === 0) return 'Free';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -142,7 +143,7 @@ export function ProductCatalogCard() {
 
   const handleSave = async () => {
     const priceCents = Math.round(parseFloat(formData.price) * 100);
-    if (!formData.name.trim() || isNaN(priceCents) || priceCents <= 0) {
+    if (!formData.name.trim() || isNaN(priceCents) || priceCents < 0) {
       toast({ title: 'Invalid input', description: 'Please enter a valid name and price.', variant: 'destructive' });
       return;
     }
@@ -274,7 +275,9 @@ export function ProductCatalogCard() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="font-semibold text-primary whitespace-nowrap">{formatPrice(product.price_cents)}</span>
+                    <span className={`font-semibold whitespace-nowrap ${product.price_cents === 0 ? 'text-green-600 dark:text-green-400' : 'text-primary'}`}>
+                      {formatPrice(product.price_cents)}
+                    </span>
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(product)}>
                       <Pencil className="w-4 h-4" />
                     </Button>

@@ -46,11 +46,18 @@ export interface WizardState {
   hasIceMaker: boolean;
   waterConcerns: string;
   // Water test
+  waterTestMode: 'exact' | 'passfail';
   hardness: string;
   iron: string;
   tds: string;
   ph: number[];
   chlorine: string;
+  hardnessResult: 'pass' | 'fail' | '';
+  ironResult: 'pass' | 'fail' | '';
+  tdsResult: 'pass' | 'fail' | '';
+  chlorineResult: 'pass' | 'fail' | '';
+  phResult: 'pass' | 'fail' | '';
+  soapTestResult: 'pass' | 'fail' | '';
   // Presentation
   presentationUrl: string | null;
   isGenerating: boolean;
@@ -85,11 +92,18 @@ export function useProposalWizard() {
     hasWaterHeater: false,
     hasIceMaker: false,
     waterConcerns: '',
+    waterTestMode: 'passfail',
     hardness: '',
     iron: '',
     tds: '',
     ph: [7],
     chlorine: '',
+    hardnessResult: '',
+    ironResult: '',
+    tdsResult: '',
+    chlorineResult: '',
+    phResult: '',
+    soapTestResult: '',
     presentationUrl: null,
     isGenerating: false,
     selectedProductIds: [],
@@ -110,13 +124,15 @@ export function useProposalWizard() {
       case 1:
         return (
           state.customerName.trim().length > 0 &&
+          state.customerEmail.trim().length > 0 &&
+          state.customerPhone.trim().length > 0 &&
           state.street.trim().length > 0 &&
           state.city.trim().length > 0 &&
           state.state.trim().length > 0 &&
           state.zipCode.trim().length > 0
         );
       case 2:
-        return state.homeAge.length > 0 && state.householdSize.length > 0 && state.waterSource.length > 0;
+        return true;
       case 3:
         return true;
       case 4:

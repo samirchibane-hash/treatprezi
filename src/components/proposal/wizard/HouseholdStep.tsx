@@ -15,7 +15,7 @@ export function HouseholdStep({ state, update }: Props) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label className="font-medium">Home Age</Label>
+          <Label className="font-medium">Home Age <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Select value={state.homeAge} onValueChange={(v) => update({ homeAge: v })}>
             <SelectTrigger className="h-12"><SelectValue placeholder="Select..." /></SelectTrigger>
             <SelectContent>
@@ -24,7 +24,7 @@ export function HouseholdStep({ state, update }: Props) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label className="font-medium">Household Size</Label>
+          <Label className="font-medium">Household Size <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Select value={state.householdSize} onValueChange={(v) => update({ householdSize: v })}>
             <SelectTrigger className="h-12"><SelectValue placeholder="Select..." /></SelectTrigger>
             <SelectContent>
@@ -36,18 +36,18 @@ export function HouseholdStep({ state, update }: Props) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="numShowers" className="font-medium">Number of Showers</Label>
+          <Label htmlFor="numShowers" className="font-medium">Number of Showers <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Input id="numShowers" type="number" min="0" placeholder="e.g., 2" value={state.numShowers} onChange={(e) => update({ numShowers: e.target.value })} className="h-12" />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="numBathrooms" className="font-medium">Number of Bathrooms</Label>
+          <Label htmlFor="numBathrooms" className="font-medium">Number of Bathrooms <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Input id="numBathrooms" type="number" min="0" placeholder="e.g., 2" value={state.numBathrooms} onChange={(e) => update({ numBathrooms: e.target.value })} className="h-12" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label className="font-medium">Water Source</Label>
+          <Label className="font-medium">Water Source <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Select value={state.waterSource} onValueChange={(v) => update({ waterSource: v })}>
             <SelectTrigger className="h-12"><SelectValue placeholder="Select..." /></SelectTrigger>
             <SelectContent>
@@ -56,7 +56,7 @@ export function HouseholdStep({ state, update }: Props) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="bottledWater" className="font-medium">Bottled Water/Month</Label>
+          <Label htmlFor="bottledWater" className="font-medium">Bottled Water/Month <span className="text-muted-foreground font-normal">(optional)</span></Label>
           <Input id="bottledWater" type="number" min="0" placeholder="Cases per month" value={state.bottledWaterCases} onChange={(e) => update({ bottledWaterCases: e.target.value })} className="h-12" />
         </div>
       </div>

@@ -105,7 +105,7 @@ export function StripeConnectCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CreditCard className="w-5 h-5 text-primary" />
-          Payment Processing
+          Stripe Payments
         </CardTitle>
         <CardDescription>
           Connect your Stripe account to receive payments from customers.

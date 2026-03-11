@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Building2, Users, Send, CreditCard, FileText, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, User, Building2, Users, Send, CreditCard, FileText, ShoppingCart, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { StripeConnectCard } from '@/components/settings/StripeConnectCard';
+import { FinancingPartnersCard } from '@/components/settings/FinancingPartnersCard';
+import { PricingDisplayCard } from '@/components/settings/PricingDisplayCard';
 import { ProductCatalogCard } from '@/components/settings/ProductCatalogCard';
 import { DiscountCodesCard } from '@/components/settings/DiscountCodesCard';
+import { PromotionsCard } from '@/components/settings/PromotionsCard';
 import { ContractTemplatesCard } from '@/components/settings/ContractTemplatesCard';
 interface DealershipDetails {
   id: string;
@@ -259,6 +262,10 @@ export default function Settings() {
                   <CreditCard className="w-4 h-4" />
                   Payments
                 </TabsTrigger>
+                <TabsTrigger value="discounts" className="w-full justify-start gap-2 px-3 py-2.5">
+                  <Tag className="w-4 h-4" />
+                  Discounts
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -469,7 +476,18 @@ export default function Settings() {
           {isAdmin && (
             <TabsContent value="payments">
               <div className="space-y-6">
+                <FinancingPartnersCard />
+                <PricingDisplayCard />
                 <StripeConnectCard />
+              </div>
+            </TabsContent>
+          )}
+
+          {/* Discounts Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="discounts">
+              <div className="space-y-6">
+                <PromotionsCard />
                 <DiscountCodesCard />
               </div>
             </TabsContent>

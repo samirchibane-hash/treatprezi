@@ -113,14 +113,21 @@ export default function NewProposal() {
                   </Button>
 
                   {currentStep < totalSteps && (
-                    <Button
-                      variant="water"
-                      onClick={handleNext}
-                      disabled={!canProceed() && currentStep <= 4}
-                    >
-                      Continue
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      {currentStep === 2 && (
+                        <Button variant="ghost" onClick={handleNext}>
+                          Skip
+                        </Button>
+                      )}
+                      <Button
+                        variant="water"
+                        onClick={handleNext}
+                        disabled={!canProceed() && currentStep <= 4}
+                      >
+                        Continue
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </div>
                   )}
 
                   {currentStep === totalSteps && (

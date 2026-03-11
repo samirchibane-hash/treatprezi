@@ -2,8 +2,20 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, User, Droplets, Receipt, Camera, Upload, Trash2,
-  ExternalLink, MapPin, Home, FileText, Droplet, ShoppingCart, Check, Image,
+  ExternalLink, MapPin, Home, FileText, Droplet, ShoppingCart, Check, Image, AlertTriangle,
+  Pencil, X, Landmark, CreditCard, ChevronRight,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -48,6 +60,13 @@ interface Proposal {
   tds: number | null;
   ph: number | null;
   chlorine: number | null;
+  water_test_mode: string | null;
+  hardness_result: string | null;
+  iron_result: string | null;
+  tds_result: string | null;
+  ph_result: string | null;
+  chlorine_result: string | null;
+  soap_test_result: string | null;
   stage: string;
 }
 
@@ -65,6 +84,23 @@ interface Invoice {
   status: string;
   stripe_payment_link: string | null;
   created_at: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  image_url: string | null;
+}
+
+interface FinancingPartner {
+  id: string;
+  name: string;
+  description: string | null;
+  logo_url: string | null;
+  application_url: string | null;
+  installment_months: number[];
 }
 
 interface ProposalProduct {
@@ -125,6 +161,19 @@ function WaterTile({ value, label }: { value: number; label: string }) {
   );
 }
 
+// ── Pass/Fail tile ────────────────────────────────────────────────────────────
+function PassFailTile({ result, label }: { result: string; label: string }) {
+  const pass = result === 'pass';
+  return (
+    <div className={`flex flex-col items-center justify-center p-4 rounded-2xl gap-1 ${pass ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+      <p className={`text-lg font-bold ${pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+        {pass ? 'Pass' : 'Fail'}
+      </p>
+      <p className="text-[11px] text-muted-foreground text-center leading-tight">{label}</p>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ProposalProfile() {
   const { id } = useParams<{ id: string }>();
@@ -140,6 +189,21 @@ export default function ProposalProfile() {
   const [uploading, setUploading] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [stageSaving, setStageSaving] = useState(false);
+  const [financingPartners, setFinancingPartners] = useState<FinancingPartner[]>([]);
+  const [stripeConnected, setStripeConnected] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Customer edit
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [customerForm, setCustomerForm] = useState({ customer_name: '', customer_email: '', customer_phone: '', address: '' });
+  const [savingCustomer, setSavingCustomer] = useState(false);
+
+  // Product edit
+  const [editingProducts, setEditingProducts] = useState(false);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [editProductIds, setEditProductIds] = useState<string[]>([]);
+  const [savingProducts, setSavingProducts] = useState(false);
 
   const STAGES = [
     { value: 'draft', label: 'Draft' },
@@ -166,12 +230,92 @@ export default function ProposalProfile() {
     setStageSaving(false);
   };
 
+  const handleDeleteProposal = async () => {
+    if (!proposal) return;
+    setDeleting(true);
+    const { error } = await supabase.from('proposals').delete().eq('id', proposal.id);
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to delete proposal.', variant: 'destructive' });
+      setDeleting(false);
+    } else {
+      toast({ title: 'Deleted', description: 'Proposal has been deleted.' });
+      navigate('/');
+    }
+  };
+
+  const openEditCustomer = () => {
+    if (!proposal) return;
+    setCustomerForm({
+      customer_name: proposal.customer_name,
+      customer_email: proposal.customer_email || '',
+      customer_phone: proposal.customer_phone || '',
+      address: proposal.address,
+    });
+    setEditingCustomer(true);
+  };
+
+  const saveCustomer = async () => {
+    if (!proposal) return;
+    setSavingCustomer(true);
+    const { error } = await supabase
+      .from('proposals')
+      .update({
+        customer_name: customerForm.customer_name.trim(),
+        customer_email: customerForm.customer_email.trim() || null,
+        customer_phone: customerForm.customer_phone.trim() || null,
+        address: customerForm.address.trim(),
+      })
+      .eq('id', proposal.id);
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to save changes.', variant: 'destructive' });
+    } else {
+      setProposal((prev) => prev ? { ...prev, ...customerForm, customer_email: customerForm.customer_email || null, customer_phone: customerForm.customer_phone || null } : prev);
+      setEditingCustomer(false);
+      toast({ title: 'Saved' });
+    }
+    setSavingCustomer(false);
+  };
+
+  const openEditProducts = async () => {
+    const { data } = await supabase.from('products').select('*').eq('is_active', true).order('name');
+    if (data) setAllProducts(data as Product[]);
+    setEditProductIds(proposalProducts.map((pp) => pp.product_id));
+    setEditingProducts(true);
+  };
+
+  const toggleEditProduct = (id: string) => {
+    setEditProductIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const saveProducts = async () => {
+    if (!proposal) return;
+    setSavingProducts(true);
+    await supabase.from('proposal_products' as any).delete().eq('proposal_id', proposal.id);
+    if (editProductIds.length > 0) {
+      await supabase.from('proposal_products' as any).insert(
+        editProductIds.map((productId) => ({
+          proposal_id: proposal.id,
+          product_id: productId,
+          dealership_id: proposal.dealership_id,
+        }))
+      );
+    }
+    await fetchProposalProducts();
+    setEditingProducts(false);
+    setSavingProducts(false);
+    toast({ title: 'Saved' });
+  };
+
   useEffect(() => {
     if (id) {
       fetchProposal();
       fetchPhotos();
       fetchInvoices();
       fetchProposalProducts();
+      fetchFinancingPartners();
+      fetchStripeStatus();
     }
   }, [id]);
 
@@ -216,6 +360,24 @@ export default function ProposalProfile() {
       .select('product_id, products(name, description, price_cents, image_url)')
       .eq('proposal_id', id!);
     if (data) setProposalProducts(data as unknown as ProposalProduct[]);
+  };
+
+  const fetchFinancingPartners = async () => {
+    const { data } = await supabase
+      .from('financing_partners')
+      .select('id, name, description, logo_url, application_url, installment_months')
+      .eq('is_active', true)
+      .order('name');
+    if (data) setFinancingPartners(data as FinancingPartner[]);
+  };
+
+  const fetchStripeStatus = async () => {
+    try {
+      const { data } = await supabase.functions.invoke('stripe-connect-status');
+      setStripeConnected(data?.connected && data?.onboarded);
+    } catch {
+      setStripeConnected(false);
+    }
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,7 +443,10 @@ export default function ProposalProfile() {
 
   const hasWaterTestData =
     proposal.hardness !== null || proposal.iron !== null ||
-    proposal.tds !== null || proposal.ph !== null || proposal.chlorine !== null;
+    proposal.tds !== null || proposal.ph !== null || proposal.chlorine !== null ||
+    proposal.hardness_result !== null || proposal.iron_result !== null ||
+    proposal.tds_result !== null || proposal.ph_result !== null ||
+    proposal.chlorine_result !== null || proposal.soap_test_result !== null;
 
   const appliances = [
     proposal.has_dishwasher && 'Dishwasher',
@@ -320,6 +485,14 @@ export default function ProposalProfile() {
                 Presentation
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </header>
@@ -339,8 +512,10 @@ export default function ProposalProfile() {
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Deal Value</p>
             <p className="text-[14px] font-semibold text-foreground mt-0.5">
-              {invoices.length > 0
-                ? `$${(invoices.reduce((s, i) => s + i.amount_cents, 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`
+              {proposalProducts.length > 0
+                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
+                    proposalProducts.reduce((sum, pp) => sum + pp.products.price_cents, 0) / 100
+                  )
                 : '—'}
             </p>
           </div>
@@ -372,61 +547,113 @@ export default function ProposalProfile() {
       <main className="max-w-3xl mx-auto px-4 py-8 space-y-5">
 
         {/* 1 · Customer Details */}
-        <Section icon={User} title="Customer Details">
-          <div className="space-y-5">
-            <div className="grid grid-cols-3 gap-4">
-              <InfoRow label="Name" value={proposal.customer_name} />
-              <InfoRow label="Email" value={proposal.customer_email} />
-              <InfoRow label="Phone" value={proposal.customer_phone} />
-            </div>
-
-            <div className="pt-4 border-t border-border/40">
-              <div className="flex items-center gap-1.5 mb-2">
-                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+        <Section
+          icon={User}
+          title="Customer Details"
+          action={
+            editingCustomer ? (
+              <div className="flex items-center gap-1.5">
+                <Button variant="ghost" size="sm" className="h-7 text-[12px] text-muted-foreground" onClick={() => setEditingCustomer(false)}>
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </Button>
+                <Button size="sm" className="h-7 text-[12px] rounded-lg" onClick={saveCustomer} disabled={savingCustomer}>
+                  {savingCustomer ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" className="h-7 text-[12px] text-muted-foreground gap-1.5" onClick={openEditCustomer}>
+                <Pencil className="w-3.5 h-3.5" /> Edit
+              </Button>
+            )
+          }
+        >
+          {editingCustomer ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Name</p>
+                  <Input value={customerForm.customer_name} onChange={(e) => setCustomerForm((f) => ({ ...f, customer_name: e.target.value }))} className="h-9 text-[13px]" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Email</p>
+                  <Input type="email" value={customerForm.customer_email} onChange={(e) => setCustomerForm((f) => ({ ...f, customer_email: e.target.value }))} className="h-9 text-[13px]" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Phone</p>
+                  <Input type="tel" value={customerForm.customer_phone} onChange={(e) => setCustomerForm((f) => ({ ...f, customer_phone: e.target.value }))} className="h-9 text-[13px]" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Address</p>
+                <Input value={customerForm.address} onChange={(e) => setCustomerForm((f) => ({ ...f, address: e.target.value }))} className="h-9 text-[13px]" />
               </div>
-              <p className="text-[14px] text-foreground font-medium">{proposal.address}</p>
             </div>
-
-            {(proposal.home_age || proposal.household_size || proposal.water_source || proposal.num_bathrooms) && (
-              <div className="pt-4 border-t border-border/40">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <Home className="w-3.5 h-3.5 text-muted-foreground" />
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Household</p>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {proposal.home_age && <InfoRow label="Home Age" value={proposal.home_age} />}
-                  {proposal.household_size && <InfoRow label="Household Size" value={proposal.household_size} />}
-                  {proposal.water_source && <InfoRow label="Water Source" value={proposal.water_source} />}
-                  {proposal.num_bathrooms && <InfoRow label="Bathrooms" value={proposal.num_bathrooms} />}
-                </div>
-                {appliances.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {appliances.map((app) => (
-                      <Badge key={app} variant="secondary" className="rounded-lg text-[12px]">{app}</Badge>
-                    ))}
-                  </div>
-                )}
-                {proposal.water_concerns && (
-                  <div className="mt-4">
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium mb-1">Water Concerns</p>
-                    <p className="text-[14px] text-foreground">{proposal.water_concerns}</p>
-                  </div>
-                )}
+          ) : (
+            <div className="space-y-5">
+              <div className="grid grid-cols-3 gap-4">
+                <InfoRow label="Name" value={proposal.customer_name} />
+                <InfoRow label="Email" value={proposal.customer_email} />
+                <InfoRow label="Phone" value={proposal.customer_phone} />
               </div>
-            )}
-          </div>
+
+              <div className="pt-4 border-t border-border/40">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Address</p>
+                </div>
+                <p className="text-[14px] text-foreground font-medium">{proposal.address}</p>
+              </div>
+
+              {(proposal.home_age || proposal.household_size || proposal.water_source || proposal.num_bathrooms) && (
+                <div className="pt-4 border-t border-border/40">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Home className="w-3.5 h-3.5 text-muted-foreground" />
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium">Household</p>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {proposal.home_age && <InfoRow label="Home Age" value={proposal.home_age} />}
+                    {proposal.household_size && <InfoRow label="Household Size" value={proposal.household_size} />}
+                    {proposal.water_source && <InfoRow label="Water Source" value={proposal.water_source} />}
+                    {proposal.num_bathrooms && <InfoRow label="Bathrooms" value={proposal.num_bathrooms} />}
+                  </div>
+                  {appliances.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {appliances.map((app) => (
+                        <Badge key={app} variant="secondary" className="rounded-lg text-[12px]">{app}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {proposal.water_concerns && (
+                    <div className="mt-4">
+                      <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium mb-1">Water Concerns</p>
+                      <p className="text-[14px] text-foreground">{proposal.water_concerns}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </Section>
 
         {/* 2 · Water Test */}
         <Section icon={Droplets} title="Water Test">
           {hasWaterTestData ? (
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-              {proposal.hardness !== null && <WaterTile value={proposal.hardness} label="Hardness (gpg)" />}
-              {proposal.iron !== null && <WaterTile value={proposal.iron} label="Iron (ppm)" />}
-              {proposal.tds !== null && <WaterTile value={proposal.tds} label="TDS (ppm)" />}
-              {proposal.ph !== null && <WaterTile value={proposal.ph} label="pH Level" />}
-              {proposal.chlorine !== null && <WaterTile value={proposal.chlorine} label="Chlorine (ppm)" />}
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                {/* Exact values */}
+                {proposal.hardness !== null && <WaterTile value={proposal.hardness} label="Hardness (gpg)" />}
+                {proposal.iron !== null && <WaterTile value={proposal.iron} label="Iron (ppm)" />}
+                {proposal.tds !== null && <WaterTile value={proposal.tds} label="TDS (ppm)" />}
+                {proposal.ph !== null && <WaterTile value={proposal.ph} label="pH Level" />}
+                {proposal.chlorine !== null && <WaterTile value={proposal.chlorine} label="Chlorine (ppm)" />}
+                {/* Pass/Fail values */}
+                {proposal.hardness_result && <PassFailTile result={proposal.hardness_result} label="Hardness" />}
+                {proposal.iron_result && <PassFailTile result={proposal.iron_result} label="Iron" />}
+                {proposal.tds_result && <PassFailTile result={proposal.tds_result} label="TDS" />}
+                {proposal.ph_result && <PassFailTile result={proposal.ph_result} label="pH Level" />}
+                {proposal.chlorine_result && <PassFailTile result={proposal.chlorine_result} label="Chlorine" />}
+                {proposal.soap_test_result && <PassFailTile result={proposal.soap_test_result} label="Soap Test" />}
+              </div>
             </div>
           ) : (
             <div className="py-6 text-center">
@@ -439,8 +666,66 @@ export default function ProposalProfile() {
         </Section>
 
         {/* 3 · System Buildout */}
-        <Section icon={ShoppingCart} title="System Buildout">
-          {proposalProducts.length === 0 ? (
+        <Section
+          icon={ShoppingCart}
+          title="System Buildout"
+          action={
+            editingProducts ? (
+              <div className="flex items-center gap-1.5">
+                <Button variant="ghost" size="sm" className="h-7 text-[12px] text-muted-foreground" onClick={() => setEditingProducts(false)}>
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </Button>
+                <Button size="sm" className="h-7 text-[12px] rounded-lg" onClick={saveProducts} disabled={savingProducts}>
+                  {savingProducts ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" className="h-7 text-[12px] text-muted-foreground gap-1.5" onClick={openEditProducts}>
+                <Pencil className="w-3.5 h-3.5" /> Edit
+              </Button>
+            )
+          }
+        >
+          {editingProducts ? (
+            <div className="space-y-2">
+              {allProducts.map((p) => {
+                const selected = editProductIds.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggleEditProduct(p.id)}
+                    className={`w-full flex items-center gap-4 p-3.5 rounded-xl border-2 transition-colors text-left ${
+                      selected ? 'border-primary bg-primary/5' : 'border-border bg-muted/20 hover:border-primary/40'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Image className="w-4 h-4 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-semibold text-foreground truncate">{p.name}</p>
+                      {p.description && <p className="text-[12px] text-muted-foreground truncate mt-0.5">{p.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <p className="text-[13px] font-bold text-primary">
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price_cents / 100)}
+                      </p>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'border-primary bg-primary' : 'border-border'}`}>
+                        {selected && <Check className="w-3 h-3 text-primary-foreground" />}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+              {allProducts.length === 0 && (
+                <p className="text-[13px] text-muted-foreground text-center py-4">No products in catalog.</p>
+              )}
+            </div>
+          ) : proposalProducts.length === 0 ? (
             <div className="py-6 text-center">
               <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
                 <ShoppingCart className="w-5 h-5 text-muted-foreground" />
@@ -494,69 +779,136 @@ export default function ProposalProfile() {
           <ContractsTab proposalId={proposal.id} customerName={proposal.customer_name} />
         </Section>
 
-        {/* 5 · Invoices */}
+        {/* 5 · Payments & Financing */}
         <Section
           icon={Receipt}
-          title="Invoices"
+          title="Payments & Financing"
           action={
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 rounded-xl text-[12px] gap-1.5"
-              onClick={() => setInvoiceDialogOpen(true)}
-            >
-              <Receipt className="w-3 h-3" />
-              New Invoice
-            </Button>
+            stripeConnected ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-xl text-[12px] gap-1.5"
+                onClick={() => setInvoiceDialogOpen(true)}
+              >
+                <CreditCard className="w-3 h-3" />
+                + Stripe Payment
+              </Button>
+            ) : undefined
           }
         >
-          {invoices.length === 0 ? (
-            <div className="py-6 text-center">
-              <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
-                <Receipt className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <p className="text-[13px] text-muted-foreground mb-3">No invoices created yet</p>
-              <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setInvoiceDialogOpen(true)}>
-                Create First Invoice
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {invoices.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="flex items-center justify-between p-3.5 bg-muted/40 rounded-xl"
-                >
-                  <div>
-                    <p className="text-[15px] font-semibold text-foreground tabular-nums">
-                      ${(invoice.amount_cents / 100).toFixed(2)}
-                    </p>
-                    <p className="text-[12px] text-muted-foreground mt-0.5">
-                      {format(new Date(invoice.created_at), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={invoice.status === 'paid' ? 'default' : 'secondary'}
-                      className="rounded-lg capitalize text-[12px]"
-                    >
-                      {invoice.status}
-                    </Badge>
-                    {invoice.stripe_payment_link && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-xl"
-                        onClick={() => window.open(invoice.stripe_payment_link!, '_blank')}
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
+          <div className="space-y-5">
+            {/* Financing Partners */}
+            {financingPartners.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Landmark className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide">Financing Options</p>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="space-y-2">
+                  {financingPartners.map((partner) => (
+                    <div key={partner.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                      <div className="flex items-center gap-3 p-3 border-b border-border/50">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden border">
+                          {partner.logo_url ? (
+                            <img src={partner.logo_url} alt={partner.name} className="w-full h-full object-contain p-1" />
+                          ) : (
+                            <Landmark className="w-4 h-4 text-muted-foreground/40" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-foreground">{partner.name}</p>
+                          {partner.description && (
+                            <p className="text-[12px] text-muted-foreground truncate">{partner.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="px-3 py-2.5 flex items-center justify-between gap-3 bg-muted/30">
+                        <div className="flex flex-wrap gap-1.5">
+                          {partner.installment_months?.length > 0
+                            ? partner.installment_months.map((m) => (
+                                <span key={m} className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
+                                  {m} mo
+                                </span>
+                              ))
+                            : <span className="text-[11px] text-muted-foreground italic">Terms vary</span>
+                          }
+                        </div>
+                        <Button
+                          variant="water"
+                          size="sm"
+                          className="flex-shrink-0 gap-1 h-7 text-[12px]"
+                          disabled={!partner.application_url}
+                          onClick={() => partner.application_url && window.open(partner.application_url, '_blank')}
+                        >
+                          Apply Now <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stripe Invoices */}
+            {stripeConnected && (
+              <div className="space-y-2">
+                {financingPartners.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-3.5 h-3.5 text-muted-foreground" />
+                    <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide">Stripe Payments</p>
+                  </div>
+                )}
+                {invoices.length === 0 ? (
+                  <div className="py-5 text-center">
+                    <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                      <Receipt className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-[13px] text-muted-foreground mb-3">No Stripe invoices yet</p>
+                    <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setInvoiceDialogOpen(true)}>
+                      Create Invoice
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {invoices.map((invoice) => (
+                      <div key={invoice.id} className="flex items-center justify-between p-3.5 bg-muted/40 rounded-xl">
+                        <div>
+                          <p className="text-[15px] font-semibold text-foreground tabular-nums">
+                            ${(invoice.amount_cents / 100).toFixed(2)}
+                          </p>
+                          <p className="text-[12px] text-muted-foreground mt-0.5">
+                            {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'} className="rounded-lg capitalize text-[12px]">
+                            {invoice.status}
+                          </Badge>
+                          {invoice.stripe_payment_link && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => window.open(invoice.stripe_payment_link!, '_blank')}>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Neither Stripe nor financing */}
+            {!stripeConnected && financingPartners.length === 0 && (
+              <div className="py-6 text-center">
+                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+                  <Receipt className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-[13px] text-muted-foreground">No payment options configured</p>
+                <p className="text-[12px] text-muted-foreground/60 mt-1">Connect Stripe or add financing partners in Settings.</p>
+              </div>
+            )}
+          </div>
         </Section>
 
         {/* 6 · Installation & Photos */}
@@ -626,6 +978,30 @@ export default function ProposalProfile() {
         open={invoiceDialogOpen}
         onOpenChange={setInvoiceDialogOpen}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Delete Proposal?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {proposal.customer_name}'s proposal and all associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProposal}
+              disabled={deleting}
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting…' : 'Delete Proposal'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

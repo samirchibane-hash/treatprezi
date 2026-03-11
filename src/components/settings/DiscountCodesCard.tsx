@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Tag, Plus, Trash2, Loader2, ToggleLeft, ToggleRight, Percent, DollarSign } from 'lucide-react';
+import { Tag, Plus, Trash2, Loader2, ToggleLeft, ToggleRight, Percent, DollarSign, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +50,7 @@ interface Coupon {
 export function DiscountCodesCard() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stripeConnected, setStripeConnected] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -72,6 +73,13 @@ export function DiscountCodesCard() {
   const fetchCoupons = async () => {
     setLoading(true);
     try {
+      // Check Stripe connection status first
+      const { data: statusData } = await supabase.functions.invoke('stripe-connect-status');
+      const isConnected = statusData?.connected && statusData?.onboarded;
+      setStripeConnected(!!isConnected);
+
+      if (!isConnected) return;
+
       const { data, error } = await supabase.functions.invoke('manage-coupons', {
         body: { action: 'list' },
       });
@@ -82,14 +90,11 @@ export function DiscountCodesCard() {
       setCoupons(data.coupons || []);
     } catch (error) {
       console.error('Error fetching coupons:', error);
-      // Don't show error toast if Stripe not connected
-      if (error instanceof Error && !error.message.includes('Stripe account not connected')) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load discount codes',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Error',
+        description: 'Failed to load discount codes',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -218,21 +223,21 @@ export function DiscountCodesCard() {
   };
 
   return (
-    <Card className="border-0 shadow-soft">
+    <Card className={`border-0 shadow-soft ${!stripeConnected ? 'opacity-75' : ''}`}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Tag className="w-5 h-5 text-primary" />
-              Discount Codes
+              Stripe Codes
             </CardTitle>
             <CardDescription>
-              Create promo codes that customers can apply at checkout
+              Promo codes managed through Stripe — applied at Stripe checkout
             </CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled={!stripeConnected}>
                 <Plus className="w-4 h-4 mr-1" />
                 Add Code
               </Button>
@@ -353,6 +358,12 @@ export function DiscountCodesCard() {
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : !stripeConnected ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="font-medium text-foreground">Stripe not connected</p>
+            <p className="text-sm mt-1">Connect your Stripe account in the <strong>Payments</strong> tab to manage Stripe discount codes.</p>
           </div>
         ) : coupons.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">

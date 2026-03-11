@@ -42,12 +42,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Update the proposal with the presentation URL
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("proposals")
       .update({ presentation_url: presentationUrl })
-      .eq("id", proposalId)
-      .select()
-      .single();
+      .eq("id", proposalId);
 
     if (error) {
       console.error("Database update error:", error);
@@ -60,10 +58,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("Successfully updated proposal:", data);
+    console.log("Successfully updated proposal:", proposalId);
 
     return new Response(
-      JSON.stringify({ success: true, proposal: data }),
+      JSON.stringify({ success: true }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

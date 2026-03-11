@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Loader2, Plus, Trash2, Copy, Check, Link, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { FileText, Download, Loader2, Trash2, Check, Link, ExternalLink, ScrollText, Tag, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -39,29 +37,27 @@ interface Template {
 interface Product {
   id: string;
   name: string;
-  description: string | null;
   price_cents: number;
 }
 
-interface PromotionCode {
+interface Promotion {
   id: string;
+  name: string;
   code: string;
-  coupon: {
-    id: string;
-    name: string;
-    percent_off: number | null;
-    amount_off: number | null;
-    currency: string | null;
-  };
-  active: boolean;
+  discount_type: 'percent' | 'fixed' | 'free';
+  discount_value: number;
+  product_id: string | null;
+  expires_at: string | null;
 }
 
 interface ContractsTabProps {
   proposalId: string;
   customerName: string;
-  /** Pre-selected product IDs from the wizard */
   selectedProductIds?: string[];
 }
+
+const formatPrice = (cents: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100);
 
 export function ContractsTab({ proposalId, customerName, selectedProductIds: preSelectedIds }: ContractsTabProps) {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -71,30 +67,24 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const { toast } = useToast();
-  const { user } = useAuth();
 
-  // Product & discount selection
-  const [products, setProducts] = useState<Product[]>([]);
-  const [contractProductIds, setContractProductIds] = useState<string[]>(preSelectedIds || []);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [promoCodes, setPromoCodes] = useState<PromotionCode[]>([]);
-  const [selectedPromoId, setSelectedPromoId] = useState<string>('none');
-  const [loadingPromos, setLoadingPromos] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>(preSelectedIds || []);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [selectedPromoId, setSelectedPromoId] = useState<string | null>(null);
+
+  const { toast } = useToast();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     fetchContracts();
     fetchTemplates();
     fetchProducts();
-    fetchPromoCodes();
   }, [proposalId]);
 
   useEffect(() => {
-    if (preSelectedIds?.length) {
-      setContractProductIds(preSelectedIds);
-    }
-  }, [preSelectedIds]);
+    fetchPromotions();
+  }, [profile?.dealership_id]);
 
   const fetchContracts = async () => {
     setLoading(true);
@@ -103,10 +93,7 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
       .select('*')
       .eq('proposal_id', proposalId)
       .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setContracts(data);
-    }
+    if (!error && data) setContracts(data);
     setLoading(false);
   };
 
@@ -116,7 +103,6 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
       .select('id, name, is_default')
       .order('is_default', { ascending: false })
       .order('name');
-
     if (data) {
       setTemplates(data);
       const defaultTpl = data.find(t => t.is_default);
@@ -125,119 +111,106 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
   };
 
   const fetchProducts = async () => {
-    setLoadingProducts(true);
     const { data } = await supabase
       .from('products')
-      .select('id, name, description, price_cents')
+      .select('id, name, price_cents')
       .eq('is_active', true)
       .order('name');
-    if (data) setProducts(data);
-    setLoadingProducts(false);
+    if (data) setAllProducts(data as Product[]);
   };
 
-  const fetchPromoCodes = async () => {
-    setLoadingPromos(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('manage-coupons', {
-        body: { action: 'list' },
-      });
-      if (!error && data?.coupons) {
-        const codes: PromotionCode[] = [];
-        for (const coupon of data.coupons) {
-          for (const pc of coupon.promotion_codes || []) {
-            if (pc.active) {
-              codes.push({
-                id: pc.id,
-                code: pc.code,
-                coupon: {
-                  id: coupon.id,
-                  name: coupon.name,
-                  percent_off: coupon.percent_off,
-                  amount_off: coupon.amount_off,
-                  currency: coupon.currency,
-                },
-                active: pc.active,
-              });
-            }
-          }
-        }
-        setPromoCodes(codes);
-      }
-    } catch {
-      // Silently fail — user may not be admin or no Stripe connected
+  const fetchPromotions = async () => {
+    if (!profile?.dealership_id) return;
+    const { data } = await supabase
+      .from('promotions')
+      .select('id, name, code, discount_type, discount_value, product_id, expires_at')
+      .eq('dealership_id', profile.dealership_id)
+      .eq('active', true);
+    if (data) {
+      const now = new Date();
+      setPromotions((data as Promotion[]).filter(p => !p.expires_at || new Date(p.expires_at) > now));
     }
-    setLoadingPromos(false);
   };
 
-  const formatPrice = (cents: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
-
-  const handleProductToggle = (productId: string) => {
-    setContractProductIds(prev =>
-      prev.includes(productId)
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
+  const toggleProduct = (id: string) => {
+    setSelectedProductIds(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
   };
 
-  const selectedProducts = products.filter(p => contractProductIds.includes(p.id));
-  const subtotal = selectedProducts.reduce((sum, p) => sum + p.price_cents, 0);
+  const selectPromo = (promoId: string | null) => {
+    const promo = promotions.find(p => p.id === promoId) ?? null;
+    const prev = promotions.find(p => p.id === selectedPromoId) ?? null;
 
-  const getDiscountInfo = () => {
-    if (selectedPromoId === 'none') return null;
-    const promo = promoCodes.find(p => p.id === selectedPromoId);
-    if (!promo) return null;
-    const { coupon } = promo;
-    if (coupon.percent_off) {
-      return { label: `${promo.code} (${coupon.percent_off}% off)`, amountOff: Math.round(subtotal * coupon.percent_off / 100) };
-    }
-    if (coupon.amount_off) {
-      return { label: `${promo.code} ($${(coupon.amount_off / 100).toFixed(2)} off)`, amountOff: coupon.amount_off };
-    }
+    setSelectedProductIds(ids => {
+      let next = [...ids];
+      // Remove previously auto-added free product
+      if (prev?.discount_type === 'free' && prev.product_id) {
+        next = next.filter(id => id !== prev.product_id);
+      }
+      // Auto-add new free product
+      if (promo?.discount_type === 'free' && promo.product_id && !next.includes(promo.product_id)) {
+        next = [...next, promo.product_id];
+      }
+      return next;
+    });
+
+    setSelectedPromoId(promoId);
+  };
+
+  const selectedPromo = promotions.find(p => p.id === selectedPromoId) ?? null;
+
+  const subtotalCents = allProducts
+    .filter(p => selectedProductIds.includes(p.id))
+    .reduce((sum, p) => sum + p.price_cents, 0);
+
+  const freeProductCents = selectedPromo?.discount_type === 'free' && selectedPromo.product_id
+    ? (allProducts.find(p => p.id === selectedPromo.product_id)?.price_cents ?? 0)
+    : 0;
+
+  const discountCents = selectedPromo
+    ? selectedPromo.discount_type === 'percent'
+      ? Math.round(subtotalCents * selectedPromo.discount_value / 100)
+      : selectedPromo.discount_type === 'fixed'
+        ? Math.round(selectedPromo.discount_value * 100)
+        : freeProductCents
+    : 0;
+
+  const totalCents = subtotalCents - discountCents;
+
+  const buildDiscount = () => {
+    if (!selectedPromo) return null;
+    if (selectedPromo.discount_type === 'percent') return { code: selectedPromo.code, percent_off: selectedPromo.discount_value };
+    if (selectedPromo.discount_type === 'fixed') return { code: selectedPromo.code, amount_off: Math.round(selectedPromo.discount_value * 100) };
+    if (selectedPromo.discount_type === 'free' && freeProductCents > 0) return { code: selectedPromo.code, amount_off: freeProductCents };
     return null;
   };
 
-  const discountInfo = getDiscountInfo();
-  const total = subtotal - (discountInfo?.amountOff || 0);
-
   const handleGenerate = async () => {
-    if (contractProductIds.length === 0) {
-      toast({ title: 'No products selected', description: 'Select at least one product to include in the contract.', variant: 'destructive' });
+    if (selectedProductIds.length === 0) {
+      toast({ title: 'No products selected', description: 'Select at least one product below.', variant: 'destructive' });
       return;
     }
-
     setGenerating(true);
     try {
-      const selectedPromo = selectedPromoId !== 'none' ? promoCodes.find(p => p.id === selectedPromoId) : null;
-
       const body: Record<string, unknown> = {
         proposalId,
-        productIds: contractProductIds,
-        discount: selectedPromo ? {
-          code: selectedPromo.code,
-          name: selectedPromo.coupon.name,
-          percent_off: selectedPromo.coupon.percent_off,
-          amount_off: selectedPromo.coupon.amount_off,
-          currency: selectedPromo.coupon.currency,
-        } : null,
+        productIds: selectedProductIds,
+        discount: buildDiscount(),
       };
-      if (selectedTemplateId !== 'default') {
-        body.templateId = selectedTemplateId;
-      }
+      if (selectedTemplateId !== 'default') body.templateId = selectedTemplateId;
 
       const { data, error } = await supabase.functions.invoke('generate-contract', { body });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({ title: 'Contract generated!', description: `Contract for ${customerName} is ready.` });
+      toast({ title: 'Agreement generated!', description: `Agreement for ${customerName} is ready.` });
       if (data?.signingToken) {
         window.open(`${window.location.origin}/sign?token=${data.signingToken}`, '_blank');
       }
       fetchContracts();
     } catch (error) {
-      console.error('Error generating contract:', error);
-      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to generate contract', variant: 'destructive' });
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to generate agreement', variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
@@ -288,19 +261,168 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
     }
   };
 
+  const isSigned = contracts.some(c => c.status === 'signed');
+  const signedProducts = allProducts.filter(p => selectedProductIds.includes(p.id));
+
   return (
-    <div className="space-y-4">
-      {/* Config toggle */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => setShowConfig(!showConfig)} className="text-muted-foreground">
-          {showConfig ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
-          {showConfig ? 'Hide' : 'Configure'} Products & Discounts
-        </Button>
-        <div className="flex items-end gap-2">
-          {templates.length > 0 && (
+    <div className="space-y-5">
+
+      {/* Signed lock banner */}
+      {isSigned && (
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700">
+          <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+          <p className="text-[12px] font-medium">This agreement is signed and locked. Delete it to start a new one.</p>
+        </div>
+      )}
+
+      {/* System Buildout */}
+      <div className="space-y-2">
+        <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide">System Buildout</p>
+
+        {isSigned ? (
+          /* Read-only: only show selected products */
+          <div className="space-y-1">
+            {signedProducts.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">No products recorded.</p>
+            ) : signedProducts.map(product => (
+              <div
+                key={product.id}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border bg-primary/5 border-primary/30"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded border bg-primary border-primary flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-primary-foreground" />
+                  </div>
+                  <span className="text-[13px] font-medium">{product.name}</span>
+                </div>
+                <span className="text-[13px] tabular-nums">{formatPrice(product.price_cents)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Editable */
+          allProducts.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No products in catalog.</p>
+          ) : (
+            <div className="space-y-1">
+              {allProducts.map(product => {
+                const selected = selectedProductIds.includes(product.id);
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => toggleProduct(product.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                      selected
+                        ? 'bg-primary/5 border-primary/30 text-foreground'
+                        : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                        selected ? 'bg-primary border-primary' : 'border-muted-foreground/40'
+                      }`}>
+                        {selected && <Check className="w-3 h-3 text-primary-foreground" />}
+                      </div>
+                      <span className="text-[13px] font-medium">{product.name}</span>
+                    </div>
+                    <span className="text-[13px] tabular-nums">{formatPrice(product.price_cents)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )
+        )}
+
+        {/* Subtotal / Total */}
+        {selectedProductIds.length > 0 && (
+          <div className="pt-1 space-y-1 px-1">
+            <div className="flex justify-between text-[13px] text-muted-foreground">
+              <span>Subtotal</span>
+              <span className="tabular-nums">{formatPrice(subtotalCents)}</span>
+            </div>
+            {discountCents > 0 && (
+              <div className="flex justify-between text-[13px] text-emerald-600">
+                <span>{selectedPromo!.name} ({selectedPromo!.code})</span>
+                <span className="tabular-nums">−{formatPrice(discountCents)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-[13px] font-semibold border-t pt-1">
+              <span>Total</span>
+              <span className="tabular-nums">{formatPrice(totalCents)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Promotions */}
+      {(isSigned ? selectedPromo !== null : promotions.length > 0) && (
+        <div className="space-y-2">
+          <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide">
+            {isSigned ? 'Promotion Applied' : 'Apply Promotion'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {isSigned ? (
+              /* Read-only: just the applied promo as a static badge */
+              selectedPromo && (() => {
+                const freeProduct = selectedPromo.discount_type === 'free' && selectedPromo.product_id
+                  ? allProducts.find(p => p.id === selectedPromo.product_id)
+                  : null;
+                const label = selectedPromo.discount_type === 'percent'
+                  ? `${selectedPromo.discount_value}% off`
+                  : selectedPromo.discount_type === 'fixed'
+                    ? `$${selectedPromo.discount_value} off`
+                    : freeProduct ? `Free ${freeProduct.name}` : 'Free Product';
+                return (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-medium bg-emerald-50 border-emerald-300 text-emerald-700">
+                    <Tag className="w-3 h-3" />
+                    <span>{selectedPromo.name}</span>
+                    <span className="opacity-70">· {label}</span>
+                  </span>
+                );
+              })()
+            ) : (
+              /* Editable */
+              promotions.map(promo => {
+                const active = selectedPromoId === promo.id;
+                const freeProduct = promo.discount_type === 'free' && promo.product_id
+                  ? allProducts.find(p => p.id === promo.product_id)
+                  : null;
+                const label = promo.discount_type === 'percent'
+                  ? `${promo.discount_value}% off`
+                  : promo.discount_type === 'fixed'
+                    ? `$${promo.discount_value} off`
+                    : freeProduct
+                      ? `Free ${freeProduct.name}`
+                      : 'Free Product';
+                return (
+                  <button
+                    key={promo.id}
+                    onClick={() => selectPromo(active ? null : promo.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-medium transition-colors ${
+                      active
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                        : 'bg-muted/40 border-transparent text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Tag className="w-3 h-3" />
+                    <span>{promo.name}</span>
+                    <span className="opacity-70">· {label}</span>
+                    {active && <X className="w-3 h-3 ml-0.5" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Template + Generate — hidden when signed */}
+      {!isSigned && (
+        <div className="space-y-3">
+          {templates.length > 1 && (
             <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Template" />
+              <SelectTrigger className="h-9 text-[13px]">
+                <SelectValue placeholder="Select template" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="default">Default Template</SelectItem>
@@ -312,109 +434,33 @@ export function ContractsTab({ proposalId, customerName, selectedProductIds: pre
               </SelectContent>
             </Select>
           )}
-          <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating || contractProductIds.length === 0}>
+          <Button
+            variant="water"
+            className="w-full"
+            onClick={handleGenerate}
+            disabled={generating || selectedProductIds.length === 0 || contracts.length > 0}
+          >
             {generating ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+              <><Loader2 className="w-4 h-4 animate-spin" /> Generating Agreement...</>
             ) : (
-              <><Plus className="w-4 h-4" /> Generate Contract</>
+              <><ScrollText className="w-4 h-4" /> Confirm & Generate Agreement</>
             )}
           </Button>
-        </div>
-      </div>
-
-      {/* Product & Discount Selection */}
-      {showConfig && (
-        <div className="space-y-4 rounded-lg border p-4 bg-muted/30 animate-fade-in">
-          {/* Products */}
-          <div className="space-y-2">
-            <Label className="font-medium">Products to Include</Label>
-            {loadingProducts ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : products.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No products available.</p>
-            ) : (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {products.map((product) => (
-                  <label
-                    key={product.id}
-                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                  >
-                    <Checkbox
-                      checked={contractProductIds.includes(product.id)}
-                      onCheckedChange={() => handleProductToggle(product.id)}
-                    />
-                    <div className="flex-1 flex justify-between items-center min-w-0">
-                      <span className="text-sm font-medium truncate">{product.name}</span>
-                      <span className="text-sm font-semibold text-primary whitespace-nowrap ml-2">
-                        {formatPrice(product.price_cents)}
-                      </span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Discount Code */}
-          <div className="space-y-2">
-            <Label className="font-medium">Apply Discount</Label>
-            {loadingPromos ? (
-              <div className="flex items-center justify-center py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : promoCodes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active discount codes available.</p>
-            ) : (
-              <Select value={selectedPromoId} onValueChange={setSelectedPromoId}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="No discount" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No discount</SelectItem>
-                  {promoCodes.map((pc) => (
-                    <SelectItem key={pc.id} value={pc.id}>
-                      {pc.code} — {pc.coupon.percent_off ? `${pc.coupon.percent_off}% off` : `$${((pc.coupon.amount_off || 0) / 100).toFixed(2)} off`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          {/* Totals */}
-          {contractProductIds.length > 0 && (
-            <div className="border-t pt-3 space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal ({contractProductIds.length} item{contractProductIds.length > 1 ? 's' : ''})</span>
-                <span className="font-medium">{formatPrice(subtotal)}</span>
-              </div>
-              {discountInfo && (
-                <div className="flex justify-between text-green-600">
-                  <span>Discount ({discountInfo.label})</span>
-                  <span>-{formatPrice(discountInfo.amountOff)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-bold text-base border-t pt-2">
-                <span>Total</span>
-                <span className="text-primary">{formatPrice(total)}</span>
-              </div>
-            </div>
+          {contracts.length > 0 ? (
+            <p className="text-[12px] text-muted-foreground text-center">Delete the existing agreement below to generate a new one.</p>
+          ) : selectedProductIds.length === 0 && (
+            <p className="text-[12px] text-muted-foreground text-center">Select at least one product above.</p>
           )}
         </div>
       )}
 
+      {/* Contracts list */}
       {loading ? (
-        <p className="text-sm text-muted-foreground text-center py-8">Loading contracts...</p>
+        <p className="text-sm text-muted-foreground text-center py-8">Loading agreements...</p>
       ) : contracts.length === 0 ? (
         <div className="text-center py-8">
           <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-          <p className="text-sm text-muted-foreground mb-4">No contracts generated yet</p>
-          <Button variant="outline" size="sm" onClick={() => { setShowConfig(true); }} disabled={generating}>
-            <FileText className="w-4 h-4 mr-2" />
-            Configure & Generate Contract
-          </Button>
+          <p className="text-sm text-muted-foreground">No agreements generated yet</p>
         </div>
       ) : (
         <div className="space-y-2">

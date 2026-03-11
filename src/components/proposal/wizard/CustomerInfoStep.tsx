@@ -8,10 +8,8 @@ interface Props {
 }
 
 export function CustomerInfoStep({ state, update }: Props) {
-  const isValidEmail = (email: string) => {
-    if (!email.trim()) return true;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
+  const isValidEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   return (
     <div className="space-y-4">
@@ -27,9 +25,7 @@ export function CustomerInfoStep({ state, update }: Props) {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="customerEmail" className="font-medium">
-          Email <span className="text-muted-foreground font-normal">(optional)</span>
-        </Label>
+        <Label htmlFor="customerEmail" className="font-medium">Email</Label>
         <Input
           id="customerEmail"
           type="email"
@@ -40,9 +36,7 @@ export function CustomerInfoStep({ state, update }: Props) {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="customerPhone" className="font-medium">
-          Phone <span className="text-muted-foreground font-normal">(optional)</span>
-        </Label>
+        <Label htmlFor="customerPhone" className="font-medium">Phone</Label>
         <Input
           id="customerPhone"
           type="tel"

@@ -78,11 +78,18 @@ export function PresentationStep({ state, update }: Props) {
           has_water_heater: state.hasWaterHeater,
           has_ice_maker: state.hasIceMaker,
           water_concerns: state.waterConcerns.trim() || null,
-          hardness: state.hardness ? parseFloat(state.hardness) : null,
-          iron: state.iron ? parseFloat(state.iron) : null,
-          tds: state.tds ? parseFloat(state.tds) : null,
-          ph: state.ph[0],
-          chlorine: state.chlorine ? parseFloat(state.chlorine) : null,
+          water_test_mode: state.waterTestMode,
+          hardness: state.waterTestMode === 'exact' && state.hardness ? parseFloat(state.hardness) : null,
+          iron: state.waterTestMode === 'exact' && state.iron ? parseFloat(state.iron) : null,
+          tds: state.waterTestMode === 'exact' && state.tds ? parseFloat(state.tds) : null,
+          ph: state.waterTestMode === 'exact' ? state.ph[0] : null,
+          chlorine: state.waterTestMode === 'exact' && state.chlorine ? parseFloat(state.chlorine) : null,
+          hardness_result: state.waterTestMode === 'passfail' ? (state.hardnessResult || null) : null,
+          iron_result: state.waterTestMode === 'passfail' ? (state.ironResult || null) : null,
+          tds_result: state.waterTestMode === 'passfail' ? (state.tdsResult || null) : null,
+          ph_result: state.waterTestMode === 'passfail' ? (state.phResult || null) : null,
+          chlorine_result: state.waterTestMode === 'passfail' ? (state.chlorineResult || null) : null,
+          soap_test_result: state.soapTestResult || null,
         })
         .select()
         .single();
